@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>내 점수 확인</title>
+  <style>
+    body { text-align: center; background-color: #e8f5e9; font-family: sans-serif; padding-top: 50px; }
+    .box { background-color: white; padding: 30px; border-radius: 15px; display: inline-block; border: 2px solid #4caf50; width: 350px; }
+    input { padding: 10px; font-size: 18px; width: 80%; margin-bottom: 20px; text-align: center; border: 2px solid #ccc; border-radius: 5px; }
+    button { padding: 10px 20px; font-size: 18px; background-color: #4caf50; color: white; border: none; border-radius: 10px; cursor: pointer; }
+    #scoreDisplay { margin-top: 30px; font-size: 24px; font-weight: bold; color: #2e7d32; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>👷‍♂️ 내 점수 확인하기</h2>
+    <p>이름을 입력하면 현재 점수를 알려드려요!</p>
+    <input type="text" id="userName" placeholder="이름을 입력하세요">
+    <br>
+    <button id="checkBtn">점수 확인!</button>
+    <div id="scoreDisplay"></div>
+    <br><br>
+<a href="index.html" style="font-size: 20px; text-decoration: none; color: #555; font-weight: bold; padding: 10px; display: inline-block;">🏠 홈으로 돌아가기</a>
+  </div>
+
+  <script type="module">
+    import { db, ref, get } from "./firebase-setup.js";
+
+    document.getElementById('checkBtn').onclick = async () => {
+      const name = document.getElementById('userName').value;
+      const display = document.getElementById('scoreDisplay');
+      
+      if(!name) { alert("이름을 입력해주세요!"); return; }
+
+      // 하늘의 칠판에서 내 이름 찾기
+      const userRef = ref(db, `scores/${name}`);
+      const snapshot = await get(userRef);
+
+      if (snapshot.exists()) {
+        const score = snapshot.val();
+        display.innerHTML = `${name}님의 현재 점수는<br><span style="font-size:40px;">💰 ${score}점</span><br>입니다!`;
+      } else {
+        display.innerHTML = "앗! 등록되지 않은 이름이에요. 😢<br><span style='font-size:14px; color:gray;'>관리자에게 등록을 요청하세요.</span>";
+      }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>전체 랭킹</title>
+  <style>
+    body { text-align: center; background-color: #fff9c4; font-family: sans-serif; padding-top: 50px; }
+    .box { background-color: white; padding: 30px; border-radius: 15px; display: inline-block; border: 3px solid #fbc02d; width: 350px; }
+    .rank-item { font-size: 20px; font-weight: bold; margin: 15px 0; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; }
+    .rank-1 { background-color: #ffd54f; color: #d84315; border: 2px solid #fbc02d; }
+    .rank-2 { background-color: #f5f5f5; color: #616161; }
+    .rank-3 { background-color: #efebe9; color: #5d4037; }
+    .rank-other { background-color: #fafafa; font-size: 16px; color: #757575; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>🏆 전체 명예의 전당</h2>
+    <p>우리 회사의 안전왕은 누구일까요?</p>
+    <div id="rankingList">로딩 중...</div>
+    <br>
+<a href="index.html" style="font-size: 20px; text-decoration: none; color: #555; font-weight: bold; padding: 10px; display: inline-block;">🏠 홈으로 돌아가기</a>
+  </div>
+
+  <script type="module">
+    import { db, ref, onValue } from "./firebase-setup.js";
+
+    const scoresRef = ref(db, 'scores');
+    
+    // 칠판의 점수가 바뀔 때마다 자동으로 순위를 다시 그려줘요!
+    onValue(scoresRef, (snapshot) => {
+      const data = snapshot.val();
+      const listArea = document.getElementById("rankingList");
+      
+      if (!data) {
+        listArea.innerHTML = "아직 점수가 없어요!";
+        return;
+      }
+
+      let arr = [];
+      for (let name in data) {
+        arr.push({ name: name, score: data[name] });
+      }
+
+      // 점수 높은 순 정렬
+      arr.sort((a, b) => b.score - a.score);
+
+      let html = "";
+      arr.forEach((user, index) => {
+        let rankClass = "rank-other";
+        let medal = (index + 1) + "등 ";
+        
+        if (index === 0) { rankClass = "rank-1"; medal = "🥇 1등 "; }
+        else if (index === 1) { rankClass = "rank-2"; medal = "🥈 2등 "; }
+        else if (index === 2) { rankClass = "rank-3"; medal = "🥉 3등 "; }
+
+        html += `<div class="rank-item ${rankClass}">
+                  <span>${medal} ${user.name}</span>
+                  <span>${user.score}점</span>
+                </div>`;
+      });
+      listArea.innerHTML = html;
+    });
+  </script>
+</body>
+</html>

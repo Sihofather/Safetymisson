@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스마트 안전 미션</title>
+  <style>
+    body { text-align: center; background-color: #f0f4c3; font-family: sans-serif; padding: 20px; font-size: 20px; }
+    .box { background-color: white; padding: 25px; border-radius: 20px; display: inline-block; border: 3px solid #afb42b; width: 95%; max-width: 500px; }
+    h2 { font-size: 30px; }
+    input { padding: 15px; font-size: 22px; width: 90%; margin-bottom: 25px; text-align: center; border: 2px solid #ccc; border-radius: 10px; }
+    .mission-group { background-color: #f9fbe7; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #e6ee9c; }
+    .group-title { font-size: 22px; color: #827717; font-weight: bold; margin-bottom: 15px; text-align: left; }
+    .mission-btn { padding: 20px; margin: 8px 0; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 12px; cursor: pointer; width: 100%; display: block; line-height: 1.4; }
+    .btn-self { background-color: #ff7043; } 
+    .btn-admin { background-color: #26a69a; } 
+    .qr-image { width: 220px; border: 3px solid #ccc; border-radius: 15px; margin: 20px 0; }
+    #qrResult { margin-top: 20px; font-size: 22px; font-weight: bold; }
+    a { font-size: 20px; text-decoration: none; color: #555; font-weight: bold; display: inline-block; margin-top: 20px; padding: 10px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>📝 안전 미션 수행</h2>
+    <input type="text" id="qrName" placeholder="이름을 먼저 입력하세요">
+    
+    <div class="mission-group">
+      <div class="group-title">🙋‍♂️ 스스로 확인</div>
+      <button class="mission-btn btn-self" id="btn-tbm">TBM 완료 (5점)</button>
+      <button class="mission-btn btn-self" id="btn-wear">보호구 착용 완료 (5점)</button>
+      <button class="mission-btn btn-self" id="btn-guide">안전가이드 활동 (10점)</button>
+      <button class="mission-btn btn-self" id="btn-patrol">유해위험발굴 순찰 (10점)</button>
+    </div>
+
+    <div class="mission-group">
+      <div class="group-title">👨‍💼 관리자 승인 요청</div>
+      <button class="mission-btn btn-admin" id="btn-system">안전가이드 스마트 안전보건시스템<br>등록 완료 (40점)</button>
+      <hr style="border: 0.5px dashed #ccc; margin: 20px 0;">
+      <p style="font-size: 16px; color: #555; margin-bottom: 10px;">👇 제안활동 QR코드를 찍어 제출하세요!</p>
+      <img src="제안QR.jpg" alt="제안 QR" class="qr-image">
+      <button class="mission-btn btn-admin" id="btn-propose">제안 제출 후 승인 요청 (30점)</button>
+    </div>
+
+    <div id="qrResult"></div>
+    
+    <a href="index.html">🏠 홈으로 돌아가기</a>
+  </div>
+
+  <script type="module">
+    import { db, ref, set, get, push } from "./firebase-setup.js";
+    const resultDiv = document.getElementById("qrResult");
+    async function handleMission(mission, point, type, msg) {
+      const name = document.getElementById("qrName").value.trim();
+      if (!name) { alert("이름을 적어주세요!"); return; }
+      const userRef = ref(db, `scores/${name}`);
+      const userSnap = await get(userRef);
+      if (!userSnap.exists()) { alert("등록되지 않은 사용자입니다."); return; }
+      const today = new Date().toLocaleDateString('ko-KR');
+      const dateKey = today.replace(/\./g, '').replace(/ /g, '-');
+      const todayRef = ref(db, `stamps/${name}/${dateKey}/${mission}`);
+      const stampSnap = await get(todayRef);
+      if (stampSnap.exists()) { resultDiv.innerHTML = "이미 오늘 완료한 미션입니다! 😅"; resultDiv.style.color = "red"; return; }
+      if (type === 'self') {
+        if (!confirm(msg)) return;
+        await set(userRef, userSnap.val() + point);
+        await set(todayRef, true);
+        await set(push(ref(db, 'history')), { date: today, name: name, mission: mission, point: point });
+        resultDiv.innerHTML = `🎉 '${mission}' 완료! (+${point}점)`;
+        resultDiv.style.color = "blue";
+      } else {
+        await set(push(ref(db, 'requests')), { date: today, name: name, mission: mission, point: point });
+        resultDiv.innerHTML = "✉️ 관리자에게 승인을 요청했습니다!";
+        resultDiv.style.color = "green";
+      }
+    }
+    document.getElementById('btn-tbm').onclick = () => handleMission('TBM', 5, 'self', 'TBM을 하셨나요?');
+    document.getElementById('btn-wear').onclick = () => handleMission('보호구', 5, 'self', '보호구를 착용하셨나요?');
+    document.getElementById('btn-guide').onclick = () => handleMission('안전가이드', 10, 'self', '가이드 활동을 하셨나요?');
+    document.getElementById('btn-patrol').onclick = () => handleMission('유해위험발굴', 10, 'self', '순찰을 완료하셨나요?');
+    
+    // ⭐ DB에 저장되는 이름도 길게 변경 완료! ⭐
+    document.getElementById('btn-system').onclick = () => handleMission('안전가이드 스마트 안전보건시스템 등록', 40, 'admin');
+    document.getElementById('btn-propose').onclick = () => handleMission('제안활동', 30, 'admin');
+  </script>
+</body>
+</html>
