@@ -2,42 +2,60 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>안전 지킴이</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>안전 지킴이</title>
   <style>
-    body { text-align: center; background-color: #e6f7ff; font-family: sans-serif; padding-top: 30px; font-size: 20px; }
-    h1 { font-size: 36px; color: #333; margin-bottom: 30px; }
-    p { font-size: 22px; }
+    body { text-align: center; background-color: #e6f7ff; font-family: sans-serif; padding-top: 10px; font-size: 20px; margin: 0; }
+    /* ⭐ 공지 현수막 스타일 ⭐ */
+    #noticeBanner { background-color: #ff5252; color: white; padding: 15px; font-size: 22px; font-weight: bold; display: none; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); text-align: center; word-break: keep-all; }
     
-    .btn { display: block; margin: 20px auto; padding: 25px; font-size: 24px; font-weight: bold; border: none; border-radius: 15px; cursor: pointer; color: white; width: 90%; max-width: 450px; }
+    h1 { font-size: 36px; color: #333; margin-bottom: 20px; }
+    .btn { display: block; margin: 15px auto; padding: 25px; font-size: 24px; font-weight: bold; border: none; border-radius: 15px; cursor: pointer; color: white; width: 90%; max-width: 450px; }
     .qr-btn { background-color: #2196F3; } 
     .user-btn { background-color: #4CAF50; } 
     .rank-btn { background-color: #fbc02d; color: #333; } 
+    .msg-btn { background-color: #9c27b0; } /* ⭐ 건의함 버튼 ⭐ */
 
-    .mini-rank-board { background-color: white; border: 4px solid #ffb300; border-radius: 20px; padding: 20px; width: 90%; max-width: 450px; margin: 0 auto 30px auto; box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
-    .mini-rank-title { font-size: 26px; font-weight: bold; color: #d84315; margin-bottom: 15px; }
-    .mini-rank-item { font-size: 22px; margin: 10px 0; font-weight: bold; color: #333; }
-
-    .secret-gear { position: absolute; top: 15px; right: 15px; font-size: 40px; background: none; border: none; cursor: pointer; }
+    .mini-rank-board { background-color: white; border: 4px solid #ffb300; border-radius: 20px; padding: 20px; width: 80%; max-width: 400px; margin: 0 auto 20px auto; }
+    .mini-rank-title { font-size: 26px; font-weight: bold; color: #d84315; margin-bottom: 10px; }
+    .mini-rank-item { font-size: 22px; margin: 5px 0; font-weight: bold; color: #333; }
+    .secret-gear { position: absolute; top: 15px; right: 15px; font-size: 30px; background: none; border: none; cursor: pointer; }
   </style>
 </head>
 <body>
-  <button class="secret-gear" onclick="var p=prompt('관리자 암호를 입력하세요'); if(p==='1234') location.href='admin.html';">⚙️</button>
+  <div id="noticeBanner">📢 불러오는 중...</div>
+
+  <button class="secret-gear" onclick="var p=prompt('관리자 암호?'); if(p==='1234') location.href='admin.html';">⚙️</button>
   <h1>🌟 안전 지킴이 🌟</h1>
   <div class="mini-rank-board">
     <div class="mini-rank-title">🏆 실시간 랭킹 TOP 3</div>
     <div id="miniRankBox">로딩 중...</div>
   </div>
+  
   <button class="btn qr-btn" onclick="location.href='qr.html'">📝 스마트 안전 미션</button>
   <button class="btn user-btn" onclick="location.href='user.html'">👷‍♂️ 내 점수 확인</button>
   <button class="btn rank-btn" onclick="location.href='ranking.html'">🏅 전체 순위 보기</button>
+  <button class="btn msg-btn" onclick="location.href='message.html'">✉️ 1:1 건의함 (쪽지)</button>
 
   <script type="module">
     import { db, ref, onValue } from "./firebase-setup.js";
-    const scoresRef = ref(db, 'scores');
-    onValue(scoresRef, (snapshot) => {
+    
+    // 현수막 띄우기 마법
+    onValue(ref(db, 'settings/banner'), (snap) => {
+      const banner = document.getElementById("noticeBanner");
+      if(snap.exists() && snap.val() !== "") {
+        banner.innerHTML = "📢 " + snap.val();
+        banner.style.display = "block";
+      } else {
+        banner.style.display = "none";
+      }
+    });
+
+    // 랭킹 마법
+    onValue(ref(db, 'scores'), (snapshot) => {
       const data = snapshot.val();
       const rankBox = document.getElementById("miniRankBox");
-      if (!data) { rankBox.innerHTML = "기록이 없어요!"; return; }
+      if (!data) return;
       let arr = [];
       for (let name in data) arr.push({ name: name, score: data[name] });
       arr.sort((a, b) => b.score - a.score);
