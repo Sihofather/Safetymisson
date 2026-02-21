@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1:1 건의함</title>
+  <style>
+    body { text-align: center; background-color: #f3e5f5; font-family: sans-serif; padding: 20px; font-size: 18px; }
+    .box { background-color: white; padding: 20px; border-radius: 15px; display: inline-block; border: 3px solid #9c27b0; width: 95%; max-width: 500px; }
+    h2 { color: #6a1b9a; margin-top: 0; }
+    input, button { padding: 12px; font-size: 18px; margin: 5px; border-radius: 8px; border: 1px solid #ccc; width: 90%; }
+    button { background-color: #ab47bc; color: white; font-weight: bold; border: none; cursor: pointer; }
+    #chatArea { height: 350px; overflow-y: auto; background-color: #fafafa; border: 1px solid #ddd; border-radius: 10px; padding: 10px; margin: 15px 0; display: none; text-align: left; }
+    
+    /* 채팅 말풍선 스타일 */
+    .msg-box { margin-bottom: 10px; display: flex; flex-direction: column; }
+    .msg-worker { align-items: flex-end; } /* 내 글은 오른쪽 */
+    .msg-admin { align-items: flex-start; } /* 관리자 글은 왼쪽 */
+    
+    .bubble { max-width: 75%; padding: 10px 15px; border-radius: 15px; font-size: 16px; line-height: 1.4; word-break: break-all; }
+    .bubble-worker { background-color: #ce93d8; color: #000; border-bottom-right-radius: 2px; }
+    .bubble-admin { background-color: #e0e0e0; color: #000; border-bottom-left-radius: 2px; border: 1px solid #ccc; }
+    .time-text { font-size: 11px; color: gray; margin: 2px 5px; }
+
+    .home-link { display: inline-block; padding: 15px; background-color: #eee; text-decoration: none; color: #333; font-weight: bold; border-radius: 10px; margin-top: 10px; width: 85%; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>✉️ 1:1 비밀 건의함</h2>
+    <p style="font-size: 14px; color: gray;">관리자만 읽을 수 있습니다. 익명 보장!</p>
+    
+    <div id="loginArea">
+      <input type="text" id="myName" placeholder="본인 이름을 입력하세요">
+      <button id="loginBtn">내 건의함 열기</button>
+    </div>
+
+    <div id="chatArea"></div>
+
+    <div id="inputArea" style="display: none;">
+      <input type="text" id="myMsg" placeholder="여기에 건의사항을 적어주세요">
+      <button id="sendBtn">관리자에게 전송</button>
+    </div>
+
+    <a href="index.html" class="home-link">🏠 홈으로 돌아가기</a>
+  </div>
+
+  <script type="module">
+    import { db, ref, set, get, push, onValue } from "./firebase-setup.js";
+    let currentUser = "";
+
+    document.getElementById('loginBtn').onclick = async () => {
+      const name = document.getElementById('myName').value.trim();
+      if(!name) { alert("이름을 입력하세요!"); return; }
+      const snap = await get(ref(db, `scores/${name}`));
+      if(!snap.exists()) { alert("시스템에 등록되지 않은 이름입니다. 관리자에게 문의하세요."); return; }
+      
+      currentUser = name;
+      document.getElementById('loginArea').style.display = 'none';
+      document.getElementById('chatArea').style.display = 'block';
+      document.getElementById('inputArea').style.display = 'block';
+      loadMessages();
+    };
+
+    function loadMessages() {
+      onValue(ref(db, `messages/${currentUser}`), (snap) => {
+        const data = snap.val();
+        const area = document.getElementById('chatArea');
+        area.innerHTML = "";
+        if(!data) { area.innerHTML = "<p style='text-align:center; color:gray; margin-top:50px;'>첫 건의사항을 남겨보세요!</p>"; return; }
+        
+        for(let key in data) {
+          const msg = data[key];
+          const isMe = msg.sender === 'worker';
+          const alignClass = isMe ? 'msg-worker' : 'msg-admin';
+          const bubbleClass = isMe ? 'bubble-worker' : 'bubble-admin';
+          const senderName = isMe ? '나' : '👨‍💼관리자';
+
+          area.innerHTML += `
+            <div class='msg-box ${alignClass}'>
+              <span class='time-text'>${senderName}</span>
+              <div class='bubble ${bubbleClass}'>${msg.text}</div>
+              <span class='time-text'>${msg.time}</span>
+            </div>
+          `;
+        }
+        area.scrollTop = area.scrollHeight; // 스크롤 맨 아래로
+      });
+    }
+
+    document.getElementById('sendBtn').onclick = async () => {
+      const text = document.getElementById('myMsg').value.trim();
+      if(!text) return;
+      const time = new Date().toLocaleString('ko-KR', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      await set(push(ref(db, `messages/${currentUser}`)), { sender: 'worker', text: text, time: time });
+      document.getElementById('myMsg').value = "";
+    };
+  </script>
+</body>
+</html>
