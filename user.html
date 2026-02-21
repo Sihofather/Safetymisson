@@ -2,45 +2,37 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>내 점수 확인</title>
   <style>
-    body { text-align: center; background-color: #e8f5e9; font-family: sans-serif; padding-top: 50px; }
-    .box { background-color: white; padding: 30px; border-radius: 15px; display: inline-block; border: 2px solid #4caf50; width: 350px; }
-    input { padding: 10px; font-size: 18px; width: 80%; margin-bottom: 20px; text-align: center; border: 2px solid #ccc; border-radius: 5px; }
-    button { padding: 10px 20px; font-size: 18px; background-color: #4caf50; color: white; border: none; border-radius: 10px; cursor: pointer; }
-    #scoreDisplay { margin-top: 30px; font-size: 24px; font-weight: bold; color: #2e7d32; }
+    body { text-align: center; background-color: #e0f7fa; font-family: sans-serif; padding: 20px; font-size: 20px; }
+    .box { background-color: white; padding: 30px; border-radius: 20px; display: inline-block; border: 3px solid #00acc1; width: 95%; max-width: 450px; }
+    h2 { font-size: 32px; color: #00838f; margin-bottom: 20px; }
+    input { padding: 15px; font-size: 22px; width: 90%; margin-bottom: 20px; text-align: center; border: 2px solid #ccc; border-radius: 10px; }
+    button { padding: 15px; font-size: 22px; font-weight: bold; background-color: #00acc1; color: white; border: none; border-radius: 10px; cursor: pointer; width: 95%; }
+    #scoreResult { margin-top: 30px; font-size: 28px; font-weight: bold; color: #d84315; }
+    .home-link { font-size: 20px; text-decoration: none; color: #555; font-weight: bold; padding: 15px; display: inline-block; margin-top: 20px; background-color: #eee; border-radius: 10px; width: 85%; }
   </style>
 </head>
 <body>
   <div class="box">
-    <h2>👷‍♂️ 내 점수 확인하기</h2>
-    <p>이름을 입력하면 현재 점수를 알려드려요!</p>
-    <input type="text" id="userName" placeholder="이름을 입력하세요">
-    <br>
-    <button id="checkBtn">점수 확인!</button>
-    <div id="scoreDisplay"></div>
-    <br><br>
-<a href="index.html" style="font-size: 20px; text-decoration: none; color: #555; font-weight: bold; padding: 10px; display: inline-block;">🏠 홈으로 돌아가기</a>
+    <h2>👷‍♂️ 내 점수 확인</h2>
+    <input type="text" id="checkName" placeholder="이름을 입력하세요">
+    <button id="checkBtn">점수 조회하기</button>
+    <div id="scoreResult"></div>
+    <a href="index.html" class="home-link">🏠 홈으로 돌아가기</a>
   </div>
 
   <script type="module">
     import { db, ref, get } from "./firebase-setup.js";
-
     document.getElementById('checkBtn').onclick = async () => {
-      const name = document.getElementById('userName').value;
-      const display = document.getElementById('scoreDisplay');
-      
-      if(!name) { alert("이름을 입력해주세요!"); return; }
-
-      // 하늘의 칠판에서 내 이름 찾기
-      const userRef = ref(db, `scores/${name}`);
-      const snapshot = await get(userRef);
-
-      if (snapshot.exists()) {
-        const score = snapshot.val();
-        display.innerHTML = `${name}님의 현재 점수는<br><span style="font-size:40px;">💰 ${score}점</span><br>입니다!`;
+      const name = document.getElementById('checkName').value.trim();
+      if (!name) { alert("이름을 입력해주세요!"); return; }
+      const snap = await get(ref(db, `scores/${name}`));
+      if (snap.exists()) {
+        document.getElementById('scoreResult').innerHTML = `🎉 ${name}님의 현재 점수:<br><span style="font-size:40px;">${snap.val()}점</span>`;
       } else {
-        display.innerHTML = "앗! 등록되지 않은 이름이에요. 😢<br><span style='font-size:14px; color:gray;'>관리자에게 등록을 요청하세요.</span>";
+        document.getElementById('scoreResult').innerHTML = "등록되지 않은 이름입니다.";
       }
     };
   </script>
