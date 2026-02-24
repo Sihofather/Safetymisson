@@ -4,22 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>스마트 안전 미션</title>
-  
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
   <style>
     body { text-align: center; background-color: #f0f4c3; font-family: sans-serif; padding: 20px; font-size: 20px; }
     .box { background-color: white; padding: 25px; border-radius: 20px; display: inline-block; border: 3px solid #afb42b; width: 95%; max-width: 500px; }
     h2 { font-size: 30px; }
-    input { padding: 15px; font-size: 22px; width: 90%; margin-bottom: 25px; text-align: center; border: 2px solid #ccc; border-radius: 10px; }
+    input[type=text] { padding: 15px; font-size: 22px; width: 90%; margin-bottom: 25px; text-align: center; border: 2px solid #ccc; border-radius: 10px; }
     .mission-group { background-color: #f9fbe7; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #e6ee9c; }
     .group-title { font-size: 22px; color: #827717; font-weight: bold; margin-bottom: 15px; text-align: left; }
-    .mission-btn { padding: 20px; margin: 8px 0; font-size: 20px; font-weight: bold; color: white; border: none; border-radius: 12px; cursor: pointer; width: 100%; display: block; line-height: 1.4; }
+    .mission-btn { padding: 20px; margin: 8px 0; font-size: 22px; font-weight: bold; color: white; border: none; border-radius: 12px; cursor: pointer; width: 100%; display: block; line-height: 1.4; }
     .btn-self { background-color: #ff7043; } 
+    .btn-custom { background-color: #8e24aa; } /* 커스텀 미션 보라색 버튼 */
     .btn-admin { background-color: #26a69a; } 
     .qr-image { width: 220px; border: 3px solid #ccc; border-radius: 15px; margin: 20px 0; }
-    #qrResult { margin-top: 20px; font-size: 22px; font-weight: bold; }
-    a { font-size: 20px; text-decoration: none; color: #555; font-weight: bold; display: inline-block; margin-top: 20px; padding: 10px; background-color: #eee; border-radius: 10px; width: 80%; }
+    #qrResult { margin-top: 20px; font-size: 20px; font-weight: bold; }
+    a.home-link { font-size: 20px; text-decoration: none; color: #555; font-weight: bold; display: inline-block; margin-top: 20px; padding: 15px; background-color: #eee; border-radius: 10px; width: 80%; }
+
+    .swal2-radio { display: flex !important; flex-direction: column; gap: 15px; margin-top: 20px !important; padding: 0 10px; }
+    .swal2-radio label { display: flex !important; align-items: center; justify-content: flex-start; font-size: 24px !important; padding: 15px 20px !important; background-color: #fffde7; border: 2px solid #fbc02d; border-radius: 15px; cursor: pointer; width: 100%; box-sizing: border-box; }
+    .swal2-radio input[type="radio"] { transform: scale(2.0); margin-right: 20px !important; margin-top: 0 !important; }
+    .swal2-radio label:hover { background-color: #fff9c4; }
   </style>
 </head>
 <body>
@@ -29,113 +33,103 @@
     
     <div class="mission-group">
       <div class="group-title">🙋‍♂️ 스스로 확인</div>
-      <button class="mission-btn btn-self" id="btn-tbm">TBM 완료 (5점)</button>
-      <button class="mission-btn btn-self" id="btn-wear">보호구 착용 완료 (5점)</button>
-      <button class="mission-btn btn-self" id="btn-guide">안전가이드 활동 (10점)</button>
-      <button class="mission-btn btn-self" id="btn-patrol">유해위험발굴 순찰 (10점)</button>
+      <button class="mission-btn btn-self" id="btn-tbm">TBM</button>
+      <button class="mission-btn btn-self" id="btn-wear">보호구 착용</button>
+      <button class="mission-btn btn-self" id="btn-guide">안전가이드 활동</button>
+      <button class="mission-btn btn-self" id="btn-stretch">작업 전 스트레칭</button>
+      <button class="mission-btn btn-self" id="btn-stop">작업 전 1분 멈춤 (위험요인 살피기)</button>
+      
+      <div id="customMissionArea"></div>
     </div>
 
     <div class="mission-group">
-      <div class="group-title">👨‍💼 관리자 승인 요청</div>
-      <button class="mission-btn btn-admin" id="btn-system">아차사고 등록 완료 (40점)</button>
-      <hr style="border: 0.5px dashed #ccc; margin: 20px 0;">
-      <p style="font-size: 16px; color: #555; margin-bottom: 10px;">👇 제안활동 QR코드를 찍어 제출하세요!</p>
+      <div class="group-title">👨‍💼 나의 제안 (관리자 승인)</div>
+      <p style="font-size: 16px; color: #555; margin-bottom: 10px;">👇 QR코드를 찍어 내용을 제출한 뒤,<br>아래 버튼으로 관리자에게 승인을 요청하세요!</p>
       <img src="제안QR.jpg" alt="제안 QR" class="qr-image">
-      <button class="mission-btn btn-admin" id="btn-propose">제안 제출 후 승인 요청 (30점)</button>
+      <button class="mission-btn btn-admin" id="btn-system">아차사고 승인 요청</button>
+      <button class="mission-btn btn-admin" id="btn-propose">제안제출 승인 요청</button>
     </div>
 
     <div id="qrResult"></div>
-    <a href="index.html">🏠 홈으로 돌아가기</a>
+    <a href="index.html" class="home-link">🏠 홈으로 돌아가기</a>
   </div>
 
   <script type="module">
-    import { db, ref, set, get, push } from "./firebase-setup.js";
+    import { db, ref, set, get, push, onValue } from "./firebase-setup.js";
     const resultDiv = document.getElementById("qrResult");
 
-    async function handleMission(mission, point, type, msg) {
-      const name = document.getElementById("qrName").value.trim();
-      
-      // 1. 이름 안 적었을 때의 예쁜 경고창
-      if (!name) { 
-        Swal.fire({ icon: 'warning', title: '알림', text: '이름을 먼저 입력해주세요!' });
-        return; 
+    // 관리자가 추가한 커스텀 미션 불러오기 마법
+    onValue(ref(db, 'settings/customMission'), (snap) => {
+      const area = document.getElementById("customMissionArea");
+      if(snap.exists() && snap.val() !== "") {
+        const customName = snap.val();
+        area.innerHTML = `<button class="mission-btn btn-custom" id="btn-custom">➕ ${customName}</button>`;
+        document.getElementById('btn-custom').onclick = () => handleSelfCheck(customName);
+      } else {
+        area.innerHTML = "";
       }
-      
+    });
+
+    async function checkUserAndStamp(mission) {
+      const name = document.getElementById("qrName").value.trim();
+      if (!name) { Swal.fire({ icon: 'warning', title: '알림', text: '이름을 먼저 입력해주세요!' }); return null; }
       const userRef = ref(db, `scores/${name}`);
       const userSnap = await get(userRef);
-      
-      // 2. 등록 안 된 사용자일 때의 예쁜 경고창
-      if (!userSnap.exists()) { 
-        Swal.fire({ icon: 'error', title: '오류', text: '시스템에 등록되지 않은 이름입니다. 관리자에게 문의하세요.' });
-        return; 
-      }
+      if (!userSnap.exists()) { Swal.fire({ icon: 'error', title: '오류', text: '등록되지 않은 이름입니다.' }); return null; }
       
       const today = new Date().toLocaleDateString('ko-KR');
       const dateKey = today.replace(/\./g, '').replace(/ /g, '-');
-      const todayRef = ref(db, `stamps/${name}/${dateKey}/${mission}`);
-      const stampSnap = await get(todayRef);
+      const stampRef = ref(db, `stamps/${name}/${dateKey}/${mission}`);
+      const stampSnap = await get(stampRef);
+      if (stampSnap.exists()) { Swal.fire({ icon: 'info', title: '앗!', text: '이미 오늘 완료한 미션입니다! 😅' }); return null; }
       
-      // 3. 중복 참여일 때의 예쁜 경고창
-      if (stampSnap.exists()) { 
-        Swal.fire({ icon: 'info', title: '앗!', text: '이미 오늘 완료한 미션입니다! 😅' });
-        return; 
-      }
-      
-      if (type === 'self') {
-        // ⭐ 4. 촌스러운 confirm 창 대신 예쁜 질문 창 띄우기 ⭐
-        const result = await Swal.fire({
-          title: '미션 확인',
-          text: msg,
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonColor: '#ff7043',
-          cancelButtonColor: '#999',
-          confirmButtonText: '네, 완료했습니다!',
-          cancelButtonText: '아직이요'
-        });
+      return { name, userRef, currentScore: userSnap.val(), stampRef, today };
+    }
 
-        // '아직이요'를 누르면 여기서 끝
-        if (!result.isConfirmed) return;
+    async function handleSelfCheck(mission) {
+      const data = await checkUserAndStamp(mission);
+      if (!data) return;
 
-        // '네'를 누르면 점수 추가 진행
-        await set(userRef, userSnap.val() + point);
-        await set(todayRef, true);
-        await set(push(ref(db, 'history')), { date: today, name: name, mission: mission, point: point });
-        
-        Swal.fire({ icon: 'success', title: '성공!', text: `🎉 '${mission}' 완료! (+${point}점)` });
-        resultDiv.innerHTML = `🎉 '${mission}' 완료! (+${point}점)`;
-        resultDiv.style.color = "blue";
-        
-      } else {
-        // ⭐ 5. 관리자 승인 요청 창 ⭐
-        const result = await Swal.fire({
-          title: '승인 요청',
-          text: `'${mission}' 미션 승인을 관리자에게 요청할까요?`,
-          icon: 'info',
-          showCancelButton: true,
-          confirmButtonColor: '#26a69a',
-          cancelButtonColor: '#999',
-          confirmButtonText: '요청하기',
-          cancelButtonText: '취소'
-        });
+      const { value: selectedLevel } = await Swal.fire({
+        title: `'${mission}' 평가`,
+        html: '<span style="font-size: 18px;">스스로의 활동을 솔직하게 평가해주세요!</span>',
+        icon: 'question',
+        input: 'radio',
+        inputOptions: new Map([['5', '완전 잘했음'], ['3', '잘했음'], ['1', '못했음']]),
+        inputValidator: (value) => { if (!value) return '항목을 선택해주세요!'; },
+        showCancelButton: true, confirmButtonColor: '#ff7043', cancelButtonColor: '#999', confirmButtonText: '기록하기', cancelButtonText: '취소', width: '90%'
+      });
 
-        if (!result.isConfirmed) return;
-
-        await set(push(ref(db, 'requests')), { date: today, name: name, mission: mission, point: point });
-        
-        Swal.fire({ icon: 'success', title: '요청 완료!', text: '✉️ 관리자에게 승인을 요청했습니다!' });
-        resultDiv.innerHTML = "✉️ 관리자에게 승인을 요청했습니다!";
-        resultDiv.style.color = "green";
+      if (selectedLevel) {
+        const point = parseInt(selectedLevel);
+        const levelText = point === 5 ? "(완전잘함)" : point === 3 ? "(잘함)" : "(못함)";
+        await set(data.userRef, data.currentScore + point);
+        await set(data.stampRef, true);
+        await set(push(ref(db, 'history')), { date: data.today, name: data.name, mission: mission + levelText, point: point });
+        Swal.fire({ icon: 'success', title: '성공!', text: `'${mission}' 기록이 완료되었습니다.` });
+        resultDiv.innerHTML = `✅ '${mission}' 기록 완료!`; resultDiv.style.color = "blue";
       }
     }
 
-    document.getElementById('btn-tbm').onclick = () => handleMission('TBM', 5, 'self', '작업 전 TBM을 하셨나요?');
-    document.getElementById('btn-wear').onclick = () => handleMission('보호구', 5, 'self', '안전 보호구를 올바르게 착용하셨나요?');
-    document.getElementById('btn-guide').onclick = () => handleMission('안전가이드', 10, 'self', '안전가이드 활동을 수행하셨나요?');
-    document.getElementById('btn-patrol').onclick = () => handleMission('유해위험발굴', 10, 'self', '유해위험발굴 순찰을 완료하셨나요?');
+    async function handleAdminRequest(mission) {
+      const data = await checkUserAndStamp(mission);
+      if (!data) return;
+      const result = await Swal.fire({ title: '승인 요청', text: `'${mission}' 승인을 요청할까요?`, icon: 'info', showCancelButton: true, confirmButtonColor: '#26a69a', confirmButtonText: '요청하기', cancelButtonText: '취소' });
+      if (result.isConfirmed) {
+        await set(push(ref(db, 'requests')), { date: data.today, name: data.name, mission: mission, stampKey: data.stampRef.key });
+        Swal.fire({ icon: 'success', title: '요청 완료!', text: '✉️ 관리자에게 승인을 요청했습니다!' });
+        resultDiv.innerHTML = "✉️ 관리자에게 승인을 요청했습니다!"; resultDiv.style.color = "green";
+      }
+    }
+
+    document.getElementById('btn-tbm').onclick = () => handleSelfCheck('TBM');
+    document.getElementById('btn-wear').onclick = () => handleSelfCheck('보호구 착용');
+    document.getElementById('btn-guide').onclick = () => handleSelfCheck('안전가이드 활동');
+    document.getElementById('btn-stretch').onclick = () => handleSelfCheck('작업 전 스트레칭');
+    document.getElementById('btn-stop').onclick = () => handleSelfCheck('작업 전 1분 멈춤');
     
-    document.getElementById('btn-system').onclick = () => handleMission('아차사고 등록', 40, 'admin');
-    document.getElementById('btn-propose').onclick = () => handleMission('제안활동', 30, 'admin');
+    document.getElementById('btn-system').onclick = () => handleAdminRequest('아차사고');
+    document.getElementById('btn-propose').onclick = () => handleAdminRequest('제안제출');
   </script>
 </body>
 </html>
