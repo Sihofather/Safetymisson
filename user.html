@@ -3,37 +3,174 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>내 점수 확인</title>
+  <title>내 상태 확인</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { text-align: center; background-color: #e0f7fa; font-family: sans-serif; padding: 20px; font-size: 20px; }
     .box { background-color: white; padding: 30px; border-radius: 20px; display: inline-block; border: 3px solid #00acc1; width: 95%; max-width: 450px; }
     h2 { font-size: 32px; color: #00838f; margin-bottom: 20px; }
-    input { padding: 15px; font-size: 22px; width: 90%; margin-bottom: 20px; text-align: center; border: 2px solid #ccc; border-radius: 10px; }
-    button { padding: 15px; font-size: 22px; font-weight: bold; background-color: #00acc1; color: white; border: none; border-radius: 10px; cursor: pointer; width: 95%; }
-    #scoreResult { margin-top: 30px; font-size: 28px; font-weight: bold; color: #d84315; }
-    .home-link { font-size: 20px; text-decoration: none; color: #555; font-weight: bold; padding: 15px; display: inline-block; margin-top: 20px; background-color: #eee; border-radius: 10px; width: 85%; }
+    input { padding: 15px; font-size: 20px; border: 2px solid #ccc; border-radius: 10px; box-sizing: border-box; }
+    #checkName { width: 100%; margin-bottom: 15px; text-align: center; font-size: 22px; }
+    button { padding: 15px; font-size: 22px; font-weight: bold; background-color: #00acc1; color: white; border: none; border-radius: 10px; cursor: pointer; width: 100%; margin-top: 10px; }
+    #scoreResult { margin-top: 20px; font-size: 22px; font-weight: bold; color: #d84315; line-height: 1.5; }
+    .chart-container { display: none; margin-top: 20px; padding: 10px; border: 2px dashed #4dd0e1; border-radius: 15px; background-color: #f8ffff; }
+    .home-link { font-size: 20px; text-decoration: none; color: #555; font-weight: bold; padding: 15px; display: inline-block; margin-top: 30px; background-color: #eee; border-radius: 10px; width: 85%; }
   </style>
 </head>
 <body>
   <div class="box">
-    <h2>👷‍♂️ 내 점수 확인</h2>
-    <input type="text" id="checkName" placeholder="이름을 입력하세요">
-    <button id="checkBtn">점수 조회하기</button>
+    <h2>👷‍♂️ 내 활동 상태 확인</h2>
+    <input type="text" id="checkName" placeholder="본인 이름을 입력하세요">
+    
+    <div style="margin-bottom: 15px; text-align: left;">
+      <label style="font-size: 16px; color: #00838f; font-weight: bold;">📅 조회할 달 선택:</label>
+      <input type="month" id="statMonthInput" style="width: 100%; margin-top: 5px;">
+    </div>
+
+    <button id="checkBtn">나의 활동 분석하기</button>
+    
     <div id="scoreResult"></div>
+    
+    <div class="chart-container" id="chartBox">
+      <p style="font-size: 16px; color: #00838f; margin-bottom: 5px; font-weight: bold;">📈 월간 항목별 활동량 비교</p>
+      <canvas id="userChart"></canvas>
+      <p style="font-size: 13px; color: gray; margin-top: 5px;">※ 막대의 높이로 나의 노력(활동량)을 확인하세요!</p>
+    </div>
+
     <a href="index.html" class="home-link">🏠 홈으로 돌아가기</a>
   </div>
 
   <script type="module">
-    import { db, ref, get } from "./firebase-setup.js";
+    import { db, ref, get, onValue } from "./firebase-setup.js";
+    
+    // 이번 달을 기본값으로 세팅
+    const today = new Date();
+    document.getElementById('statMonthInput').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+
+    let allHistory = [];
+    onValue(ref(db, 'history'), (snap) => {
+      allHistory = [];
+      if(snap.exists()) {
+        const data = snap.val();
+        for(let key in data) allHistory.push(data[key]);
+      }
+    });
+
+    let customMissionName = "";
+    onValue(ref(db, 'settings/customMission'), (snap) => {
+      if(snap.exists() && snap.val()) customMissionName = snap.val();
+    });
+
+    let myChart = null;
+
     document.getElementById('checkBtn').onclick = async () => {
       const name = document.getElementById('checkName').value.trim();
+      const monthVal = document.getElementById('statMonthInput').value;
+      
       if (!name) { alert("이름을 입력해주세요!"); return; }
-      const snap = await get(ref(db, `scores/${name}`));
-      if (snap.exists()) {
-        document.getElementById('scoreResult').innerHTML = `🎉 ${name}님의 현재 점수:<br><span style="font-size:40px;">${snap.val()}점</span>`;
-      } else {
+      if (!monthVal) { alert("조회할 달을 선택해주세요!"); return; }
+
+      const [y, m] = monthVal.split('-');
+      const targetDateStr = `${y}. ${parseInt(m)}.`;
+
+      // 사용자 존재 여부 확인
+      const userSnap = await get(ref(db, `scores/${name}`));
+      if (!userSnap.exists()) {
         document.getElementById('scoreResult').innerHTML = "등록되지 않은 이름입니다.";
+        document.getElementById('chartBox').style.display = "none";
+        return;
       }
+
+      // 1. 해당 월 데이터 필터링
+      const userHistory = allHistory.filter(h => h.name === name && h.date.startsWith(targetDateStr));
+
+      // ⭐ 모든 기본 미션을 0점으로 뼈대(틀) 만들기 ⭐
+      const itemScores = {
+        "TBM": 0, "보호구 착용": 0, "안전가이드 활동": 0, 
+        "작업 전 스트레칭": 0, "작업 전 1분 멈춤": 0, 
+        "아차사고": 0, "제안제출": 0
+      };
+      
+      // 커스텀 미션이 설정되어 있다면 축에 포함
+      if(customMissionName && itemScores[customMissionName] === undefined) {
+        itemScores[customMissionName] = 0;
+      }
+
+      let totalScore = 0;
+      let uniqueDays = new Set();
+
+      userHistory.forEach(h => {
+        let baseMission = h.mission.split('(')[0]; 
+        if(itemScores[baseMission] === undefined) itemScores[baseMission] = 0;
+        itemScores[baseMission] += h.point;
+        totalScore += h.point;
+        uniqueDays.add(h.date);
+      });
+
+      // 2. 칭찬 멘트 표시
+      if(totalScore === 0) {
+        document.getElementById('scoreResult').innerHTML = `
+          <span style="color:#00838f;">이달의 활동 평가:</span><br><br>
+          <span style="font-size:24px; color:#d32f2f;">"아직 이번 달 기록이 없습니다. 파이팅!"</span>
+        `;
+      } else {
+        let daysCount = uniqueDays.size > 0 ? uniqueDays.size : 1;
+        let msg = "";
+        if (totalScore >= 30 * daysCount) msg = "대단해요~! 계속 유지해주세요! 🌟";
+        else if (totalScore >= 20 * daysCount) msg = "잘하고 있어요! 조금만 더 힘내주세요! 👍";
+        else msg = "더 좋아질 수 있어요! 함께 보완해봅시다! 💪";
+
+        document.getElementById('scoreResult').innerHTML = `
+          <span style="color:#00838f;">이달의 활동 평가:</span><br><br>
+          <span style="font-size:26px;">"${msg}"</span>
+        `;
+      }
+
+      // 3. 숫자 없는 활동량 차트 그리기
+      const labels = Object.keys(itemScores);
+      labels.push("총 활동량");
+      
+      const dataPoints = Object.values(itemScores);
+      dataPoints.push(totalScore);
+
+      const bgColors = labels.map((l, idx) => idx === labels.length - 1 ? 'rgba(0, 150, 136, 0.8)' : 'rgba(0, 188, 212, 0.5)');
+      const borderColors = labels.map((l, idx) => idx === labels.length - 1 ? 'rgba(0, 150, 136, 1)' : 'rgba(0, 188, 212, 1)');
+
+      document.getElementById('chartBox').style.display = "block";
+      const ctx = document.getElementById('userChart').getContext('2d');
+      if(myChart) myChart.destroy();
+
+      myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '실천도',
+            data: dataPoints,
+            backgroundColor: bgColors,
+            borderColor: borderColors,
+            borderWidth: 2,
+            borderRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            // Y축 숫자 완전 숨김
+            y: { display: false, beginAtZero: true },
+            x: { grid: { display: false } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                // 마우스 올렸을 때 점수 대신 칭찬 멘트 표시
+                label: function() { return "훌륭한 실천입니다! 👏"; }
+              }
+            }
+          }
+        }
+      });
     };
   </script>
 </body>
