@@ -4,19 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>관리자 모드</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { text-align: center; background-color: #fff3e0; font-family: sans-serif; padding: 20px; }
     .box { background-color: white; padding: 25px; border-radius: 15px; display: inline-block; border: 2px solid #ff9800; max-width: 800px; width: 95%; text-align: left; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 20px; }
-    h2 { text-align: center; color: #e65100; font-size: 34px; }
+    h2 { text-align: center; color: #e65100; font-size: 34px; margin-bottom: 30px; }
     input, button, select { padding: 15px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; font-size: 20px; width: 100%; box-sizing: border-box; }
     button { background-color: #ff9800; color: white; border: none; cursor: pointer; font-weight: bold; margin-bottom: 15px; }
     button:hover { background-color: #f57c00; }
     h3 { color: #d84315; border-bottom: 2px solid #ffe0b2; padding-bottom: 5px; margin-top: 40px; font-size: 26px; }
-    
-    .history-item, .user-list-item { font-size: 18px; padding: 15px; background-color: #fafafa; border-left: 5px solid #ff9800; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 5px 5px 0; }
-    .btn-delete { background-color: #e53935; padding: 10px 15px; font-size: 16px; width: auto; margin: 0; }
-    
-    /* 채팅 관련 */
+    .history-item, .user-list-item, .req-item { font-size: 18px; padding: 15px; background-color: #fafafa; border-left: 5px solid #ff9800; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 5px 5px 0; }
+    .btn-small { background-color: #4CAF50; padding: 10px 15px; font-size: 16px; width: auto; margin: 0 5px; }
+    .btn-delete { background-color: #e53935; padding: 10px 15px; font-size: 16px; width: auto; margin: 0 0 0 10px; }
     #adminChatArea { height: 300px; overflow-y: auto; border: 1px solid #ccc; background-color: #f5f5f5; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
     .msg-worker { text-align: left; margin: 10px 0; }
     .msg-admin { text-align: right; margin: 10px 0; }
@@ -28,37 +27,59 @@
 </head>
 <body>
   <div class="box">
-    <h2>👨‍💼 관리자 모드 (완전판)</h2>
+    <h2>👨‍💼 관리자 모드</h2>
+
+    <h3 style="margin-top: 0;">🛠️ 추가 안전 미션 설정</h3>
+    <div style="display:flex; gap:10px;">
+      <input type="text" id="customMissionInput" placeholder="예: 작업장 정리정돈">
+      <button id="customMissionBtn" style="background-color:#8e24aa; width:150px;">적용</button>
+      <button id="customMissionDelBtn" style="background-color:#757575; width:150px;">삭제</button>
+    </div>
 
     <h3>📢 전체 공지 (현수막 달기)</h3>
-    <input type="text" id="bannerText" placeholder="예: 오늘 15시부터 정전입니다. 안전 주의!">
+    <input type="text" id="bannerText" placeholder="예: 오늘 15시부터 정전입니다.">
     <div style="display:flex; gap:10px;">
       <button id="bannerBtn" style="background-color:#d32f2f;">현수막 걸기</button>
       <button id="bannerClearBtn" style="background-color:#757575;">현수막 내리기</button>
     </div>
 
-    <h3>✉️ 1:1 건의함 (쪽지 보내기/읽기)</h3>
-    <select id="msgUserSelect"><option value="">직원을 선택하세요 (로딩중...)</option></select>
-    <div id="adminChatArea">직원을 선택하면 대화가 보입니다.</div>
+    <h3>🔔 승인 대기 목록 (건당 30점)</h3>
+    <div id="requestArea" style="min-height: 50px; border: 1px solid #eee; padding: 10px;">로딩 중...</div>
+
+    <h3>✉️ 1:1 건의함 (쪽지 보내기)</h3>
+    <select id="msgUserSelect"><option value="">직원을 선택하세요</option></select>
+    <div id="adminChatArea">선택하면 대화가 보입니다.</div>
     <div style="display:flex; gap:10px;">
       <input type="text" id="adminMsgInput" placeholder="답글 또는 쪽지 내용 입력">
       <button id="adminMsgBtn" style="width: 100px; margin: 5px 0;">전송</button>
     </div>
 
-    <h3>📝 직원 관리 (총 <span id="userCount">0</span>명)</h3>
-    <input type="text" id="newName" placeholder="새 직원 이름">
-    <button id="regBtn">직원 등록</button>
+    <h3>📊 상세 통계 (미션 항목별 분석)</h3>
+    <select id="statUserSelect"><option value="">직원을 선택하세요</option></select>
+    <div style="display:flex; gap:10px;">
+      <select id="statTypeSelect" style="width: 50%;">
+        <option value="daily">일별 조회</option>
+        <option value="monthly">월별 조회 (누적)</option>
+      </select>
+      <input type="date" id="statDateInput" style="width: 50%;">
+      <input type="month" id="statMonthInput" style="display: none; width: 50%;">
+    </div>
+    <button id="drawChartBtn" style="background-color: #1976D2; width: 100%; margin-top:10px;">그래프 조회하기</button>
+    
+    <div style="background: white; padding: 10px; border: 1px solid #ccc; border-radius: 10px; margin-top: 10px;">
+      <canvas id="myChart"></canvas>
+    </div>
+
+    <h3>📝 전체 직원 목록</h3>
     <div id="userListArea" style="max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px;"></div>
 
-    <h3>📅 상세 기록 (날짜별)</h3>
-    <input type="date" id="searchDate">
+    <h3>➕ 새 직원 등록</h3>
     <div style="display:flex; gap:10px;">
-      <button id="dateSearchBtn">날짜별 조회</button>
-      <button id="allSearchBtn" style="background-color: #757575;">전체보기</button>
+      <input type="text" id="newName" placeholder="새 직원 이름 입력">
+      <button id="regBtn" style="width: 150px; margin: 5px 0;">등록</button>
     </div>
-    <div id="historyArea" style="min-height: 200px; max-height:400px; overflow-y:auto;"></div>
 
-    <div style="text-align: center; margin-top: 30px;">
+    <div style="text-align: center; margin-top: 40px;">
       <button onclick="location.href='index.html'" style="background-color: #555; padding: 20px;">🏠 홈으로 돌아가기</button>
     </div>
   </div>
@@ -66,110 +87,187 @@
   <script type="module">
     import { db, ref, set, get, push, onValue } from "./firebase-setup.js";
 
-    // --- 1. 현수막 마법 ---
-    document.getElementById('bannerBtn').onclick = async () => {
-      const text = document.getElementById('bannerText').value.trim();
-      if(!text) return alert("내용을 입력하세요!");
-      await set(ref(db, 'settings/banner'), text);
-      alert("모든 직원의 화면에 현수막이 걸렸습니다!");
-      document.getElementById('bannerText').value = "";
-    };
-    document.getElementById('bannerClearBtn').onclick = async () => {
-      await set(ref(db, 'settings/banner'), null);
-      alert("현수막을 내렸습니다.");
-    };
+    // 날짜 입력창 기본값 오늘/이번달로 세팅
+    const today = new Date();
+    document.getElementById('statDateInput').value = today.toISOString().split('T')[0];
+    document.getElementById('statMonthInput').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
 
-    // --- 2. 건의함(쪽지) 마법 ---
-    let currentChatUser = "";
+    // 미션, 현수막, 승인대기, 직원목록, 쪽지함 로직
+    onValue(ref(db, 'settings/customMission'), (snap) => {
+      if(snap.exists() && snap.val()) document.getElementById('customMissionInput').value = snap.val();
+      else document.getElementById('customMissionInput').value = "";
+    });
+    document.getElementById('customMissionBtn').onclick = async () => {
+      const text = document.getElementById('customMissionInput').value.trim();
+      if(!text) return alert("미션 내용을 입력하세요!");
+      await set(ref(db, 'settings/customMission'), text); alert("추가 미션 적용 완료!");
+    };
+    document.getElementById('customMissionDelBtn').onclick = async () => { await set(ref(db, 'settings/customMission'), null); alert("삭제 완료!"); };
+
     onValue(ref(db, 'scores'), (snap) => {
-      const select = document.getElementById('msgUserSelect');
-      select.innerHTML = '<option value="">대화할 직원을 선택하세요</option>';
+      const msgSelect = document.getElementById('msgUserSelect');
+      const statSelect = document.getElementById('statUserSelect');
+      const listArea = document.getElementById('userListArea');
+      msgSelect.innerHTML = '<option value="">직원을 선택하세요</option>';
+      statSelect.innerHTML = '<option value="">직원을 선택하세요</option>';
+      listArea.innerHTML = "";
       if(snap.exists()) {
-        for(let name in snap.val()) select.innerHTML += `<option value="${name}">${name} 님</option>`;
+        const data = snap.val();
+        for(let name in data) {
+          msgSelect.innerHTML += `<option value="${name}">${name} 님</option>`;
+          statSelect.innerHTML += `<option value="${name}">${name} 님</option>`;
+          listArea.innerHTML += `<div class='user-list-item'><span>${name}</span> <div><b>${data[name]}점</b> <button class="btn-delete" onclick="deleteUser('${name}')">삭제</button></div></div>`;
+        }
       }
     });
 
+    document.getElementById('regBtn').onclick = async () => {
+      const name = document.getElementById('newName').value.trim();
+      if(!name) return; await set(ref(db, `scores/${name}`), 0);
+      document.getElementById('newName').value = ""; alert(name + "님 등록 완료!");
+    };
+    window.deleteUser = async (name) => {
+      if(!confirm(`정말로 삭제하시겠습니까?`)) return; await set(ref(db, `scores/${name}`), null);
+    };
+
+    document.getElementById('bannerBtn').onclick = async () => {
+      const text = document.getElementById('bannerText').value.trim();
+      if(text) { await set(ref(db, 'settings/banner'), text); alert("게시 완료!"); document.getElementById('bannerText').value=""; }
+    };
+    document.getElementById('bannerClearBtn').onclick = async () => { await set(ref(db, 'settings/banner'), null); };
+
+    onValue(ref(db, 'requests'), (snap) => {
+      const area = document.getElementById('requestArea'); area.innerHTML = ""; const data = snap.val();
+      if(!data) { area.innerHTML = "<div style='color:gray;'>대기 중인 요청이 없습니다.</div>"; return; }
+      for(let key in data) {
+        const req = data[key];
+        area.innerHTML += `<div class='req-item'><div><b>${req.name}</b> <small>${req.date}</small><br>${req.mission}</div><div><button class="btn-small" onclick="approveReq('${key}', '${req.name}', '${req.mission}', '${req.date}')">승인</button><button class="btn-delete" onclick="rejectReq('${key}')">반려</button></div></div>`;
+      }
+    });
+    window.approveReq = async (key, name, mission, date) => {
+      if(!confirm(`승인하고 30점을 부여할까요?`)) return;
+      const scoreSnap = await get(ref(db, `scores/${name}`));
+      await set(ref(db, `scores/${name}`), (scoreSnap.exists() ? scoreSnap.val() : 0) + 30);
+      await set(push(ref(db, 'history')), { date: date, name: name, mission: mission + "(관리자승인)", point: 30 });
+      await set(ref(db, `requests/${key}`), null);
+      await set(ref(db, `stamps/${name}/${date.replace(/\\./g, '').replace(/ /g, '-')}/${mission}`), true);
+    };
+    window.rejectReq = async (key) => { if(confirm("반려하시겠습니까?")) await set(ref(db, `requests/${key}`), null); };
+
+    let currentChatUser = "";
     document.getElementById('msgUserSelect').onchange = (e) => {
-      currentChatUser = e.target.value;
-      const area = document.getElementById('adminChatArea');
-      if(!currentChatUser) { area.innerHTML = "직원을 선택하면 대화가 보입니다."; return; }
-      
+      currentChatUser = e.target.value; const area = document.getElementById('adminChatArea');
+      if(!currentChatUser) return area.innerHTML = "선택해주세요.";
       onValue(ref(db, `messages/${currentChatUser}`), (snap) => {
-        area.innerHTML = "";
-        const data = snap.val();
-        if(!data) { area.innerHTML = `<p style="text-align:center; color:gray;">아직 대화가 없습니다. 먼저 쪽지를 보내보세요!</p>`; return; }
-        
+        area.innerHTML = ""; const data = snap.val();
+        if(!data) return area.innerHTML = "<p>대화가 없습니다.</p>";
         for(let key in data) {
-          const msg = data[key];
-          const isMe = msg.sender === 'admin';
-          area.innerHTML += `
-            <div class="${isMe ? 'msg-admin' : 'msg-worker'}">
-              <span class="time-text">${isMe ? '' : currentChatUser}</span>
-              <div class="bubble ${isMe ? 'bubble-admin' : 'bubble-worker'}">${msg.text}</div>
-              <span class="time-text">${msg.time}</span>
-            </div>
-          `;
+          const msg = data[key]; const isMe = msg.sender === 'admin';
+          area.innerHTML += `<div class="${isMe ? 'msg-admin' : 'msg-worker'}"><span class="time-text">${isMe ? '' : currentChatUser}</span><div class="bubble ${isMe ? 'bubble-admin' : 'bubble-worker'}">${msg.text}</div><span class="time-text">${msg.time}</span></div>`;
         }
         area.scrollTop = area.scrollHeight;
       });
     };
-
     document.getElementById('adminMsgBtn').onclick = async () => {
-      if(!currentChatUser) return alert("직원을 먼저 선택하세요!");
       const text = document.getElementById('adminMsgInput').value.trim();
-      if(!text) return;
-      const time = new Date().toLocaleString('ko-KR', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-      await set(push(ref(db, `messages/${currentChatUser}`)), { sender: 'admin', text: text, time: time });
+      if(!text || !currentChatUser) return;
+      await set(push(ref(db, `messages/${currentChatUser}`)), { sender: 'admin', text: text, time: new Date().toLocaleString('ko-KR', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) });
       document.getElementById('adminMsgInput').value = "";
     };
 
-    // --- 기존 직원/기록 관리 로직 (크기만 맞춤) ---
-    document.getElementById('regBtn').onclick = async () => {
-      const name = document.getElementById('newName').value.trim();
-      if(!name) return;
-      await set(ref(db, `scores/${name}`), 0);
-      document.getElementById('newName').value = ""; alert(name + "님 등록!");
-    };
-    window.deleteUser = async (name) => {
-      if(!confirm(`⚠️ '${name}'님을 삭제할까요?`)) return;
-      await set(ref(db, `scores/${name}`), null);
-    };
-    onValue(ref(db, 'scores'), (snap) => {
-      const data = snap.val();
-      const area = document.getElementById('userListArea');
-      document.getElementById('userCount').innerText = data ? Object.keys(data).length : 0;
-      area.innerHTML = "";
-      for(let name in data) area.innerHTML += `<div class='user-list-item'><span>${name} (${data[name]}점)</span> <button class="btn-delete" onclick="deleteUser('${name}')">삭제</button></div>`;
-    });
-    let allHistory = [];
+    // --- ⭐ 통계 그래프 (항목별 가로축 고정 배치) ⭐ ---
+    let myChartInstance = null; let allHistory = [];
     onValue(ref(db, 'history'), (snap) => {
-      const data = snap.val(); allHistory = [];
-      for(let key in data) allHistory.push({ key, ...data[key] });
-      allHistory.reverse(); renderHistory(allHistory);
+      allHistory = []; if(snap.exists()) { const data = snap.val(); for(let key in data) allHistory.push(data[key]); }
     });
-    document.getElementById('dateSearchBtn').onclick = () => {
-      const date = document.getElementById('searchDate').value;
-      if(!date) return alert("날짜 선택!");
-      const fd = new Date(date).toLocaleDateString('ko-KR');
-      renderHistory(allHistory.filter(h => h.date === fd));
+
+    document.getElementById('statTypeSelect').onchange = (e) => {
+      if(e.target.value === 'daily') {
+        document.getElementById('statDateInput').style.display = 'block';
+        document.getElementById('statMonthInput').style.display = 'none';
+      } else {
+        document.getElementById('statDateInput').style.display = 'none';
+        document.getElementById('statMonthInput').style.display = 'block';
+      }
     };
-    document.getElementById('allSearchBtn').onclick = () => renderHistory(allHistory);
-    function renderHistory(list) {
-      const area = document.getElementById('historyArea'); area.innerHTML = "";
-      list.forEach(h => {
-        area.innerHTML += `<div class='history-item'><div><b>${h.name}</b> <small>${h.date}</small><br>${h.mission}</div><div><b style="color:blue">${h.point}</b> <button class="btn-delete" onclick="cancelHistory('${h.key}')">취소</button></div></div>`;
+
+    document.getElementById('drawChartBtn').onclick = () => {
+      const name = document.getElementById('statUserSelect').value;
+      const type = document.getElementById('statTypeSelect').value;
+      if(!name) return alert("직원을 선택하세요!");
+
+      let targetDateStr = "";
+      if (type === 'daily') {
+        const dateVal = document.getElementById('statDateInput').value;
+        if(!dateVal) return alert("조회할 날짜를 선택하세요!");
+        targetDateStr = new Date(dateVal).toLocaleDateString('ko-KR'); 
+      } else {
+        const monthVal = document.getElementById('statMonthInput').value; 
+        if(!monthVal) return alert("조회할 달을 선택하세요!");
+        const [y, m] = monthVal.split('-');
+        targetDateStr = `${y}. ${parseInt(m)}.`; 
+      }
+
+      const userHistory = allHistory.filter(h => {
+         if(h.name !== name) return false;
+         if(type === 'daily') return h.date === targetDateStr;
+         return h.date.startsWith(targetDateStr); 
       });
-    }
-    window.cancelHistory = async (key) => {
-      if(!confirm("이 기록을 삭제하고 점수를 회수할까요?")) return;
-      const snap = await get(ref(db, `history/${key}`));
-      if(!snap.exists()) return;
-      const h = snap.val();
-      const scoreSnap = await get(ref(db, `scores/${h.name}`));
-      if(scoreSnap.exists()) await set(ref(db, `scores/${h.name}`), scoreSnap.val() - h.point);
-      await set(ref(db, `history/${key}`), null);
+
+      // ⭐ 모든 기본 미션을 0점으로 뼈대(틀) 만들기 ⭐
+      const itemScores = {
+        "TBM": 0, "보호구 착용": 0, "안전가이드 활동": 0, 
+        "작업 전 스트레칭": 0, "작업 전 1분 멈춤": 0, 
+        "아차사고": 0, "제안제출": 0
+      };
+      
+      // 커스텀 미션이 설정되어 있다면 축에 포함
+      const customMission = document.getElementById('customMissionInput').value.trim();
+      if(customMission && itemScores[customMission] === undefined) {
+        itemScores[customMission] = 0;
+      }
+
+      let totalScore = 0;
+
+      // 실제 기록된 점수 덮어씌우기
+      userHistory.forEach(h => {
+        let baseMission = h.mission.split('(')[0]; 
+        if(itemScores[baseMission] === undefined) itemScores[baseMission] = 0; // 혹시 과거에 다른 이름의 미션이 있었다면 추가
+        itemScores[baseMission] += h.point;
+        totalScore += h.point;
+      });
+
+      // 가로축 라벨 구성: [각 미션 이름들..., "총 점수"]
+      const labels = Object.keys(itemScores);
+      labels.push(type === 'daily' ? "일일 총 점수" : "월간 총 점수");
+      
+      const dataPoints = Object.values(itemScores);
+      dataPoints.push(totalScore);
+
+      const bgColors = labels.map((l, idx) => idx === labels.length - 1 ? 'rgba(230, 81, 0, 0.8)' : 'rgba(33, 150, 243, 0.6)');
+      const borderColors = labels.map((l, idx) => idx === labels.length - 1 ? 'rgba(230, 81, 0, 1)' : 'rgba(33, 150, 243, 1)');
+
+      const ctx = document.getElementById('myChart').getContext('2d');
+      if (myChartInstance) myChartInstance.destroy(); 
+
+      myChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '획득 점수',
+            data: dataPoints,
+            backgroundColor: bgColors,
+            borderColor: borderColors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: { y: { beginAtZero: true } },
+          plugins: { legend: { display: false } }
+        }
+      });
     };
   </script>
 </body>
 </html>
-
