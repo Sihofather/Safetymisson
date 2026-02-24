@@ -3,43 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>안전 지킴이</title>
+  <title>세이프 미 (Safe me) </title>
   <style>
     body { text-align: center; background-color: #e6f7ff; font-family: sans-serif; padding-top: 10px; font-size: 20px; margin: 0; }
-    /* ⭐ 공지 현수막 스타일 ⭐ */
     #noticeBanner { background-color: #ff5252; color: white; padding: 15px; font-size: 22px; font-weight: bold; display: none; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); text-align: center; word-break: keep-all; }
-    
-    h1 { font-size: 36px; color: #333; margin-bottom: 20px; }
+    h1 { font-size: 36px; color: #333; margin-bottom: 20px; margin-top: 30px; }
     .btn { display: block; margin: 15px auto; padding: 25px; font-size: 24px; font-weight: bold; border: none; border-radius: 15px; cursor: pointer; color: white; width: 90%; max-width: 450px; }
     .qr-btn { background-color: #2196F3; } 
     .user-btn { background-color: #4CAF50; } 
-    .rank-btn { background-color: #fbc02d; color: #333; } 
-    .msg-btn { background-color: #9c27b0; } /* ⭐ 건의함 버튼 ⭐ */
-
-    .mini-rank-board { background-color: white; border: 4px solid #ffb300; border-radius: 20px; padding: 20px; width: 80%; max-width: 400px; margin: 0 auto 20px auto; }
-    .mini-rank-title { font-size: 26px; font-weight: bold; color: #d84315; margin-bottom: 10px; }
-    .mini-rank-item { font-size: 22px; margin: 5px 0; font-weight: bold; color: #333; }
+    .msg-btn { background-color: #9c27b0; } 
     .secret-gear { position: absolute; top: 15px; right: 15px; font-size: 30px; background: none; border: none; cursor: pointer; }
   </style>
 </head>
 <body>
   <div id="noticeBanner">📢 불러오는 중...</div>
-
   <button class="secret-gear" onclick="var p=prompt('관리자 암호?'); if(p==='1234') location.href='admin.html';">⚙️</button>
-  <h1>🌟 안전 지킴이 🌟</h1>
-  <div class="mini-rank-board">
-    <div class="mini-rank-title">🏆 실시간 랭킹 TOP 3</div>
-    <div id="miniRankBox">로딩 중...</div>
-  </div>
+  
+  <h1>🌟 세이프 미 (Safe me) 🌟</h1>
   
   <button class="btn qr-btn" onclick="location.href='qr.html'">📝 스마트 안전 미션</button>
-  <button class="btn user-btn" onclick="location.href='user.html'">👷‍♂️ 내 점수 확인</button>
-  <button class="btn rank-btn" onclick="location.href='ranking.html'">🏅 전체 순위 보기</button>
+  <button class="btn user-btn" onclick="location.href='user.html'">👷‍♂️ 내 상태 확인</button>
   <button class="btn msg-btn" onclick="location.href='message.html'">✉️ 1:1 건의함 (쪽지)</button>
 
   <script type="module">
     import { db, ref, onValue } from "./firebase-setup.js";
-    
     // 현수막 띄우기 마법
     onValue(ref(db, 'settings/banner'), (snap) => {
       const banner = document.getElementById("noticeBanner");
@@ -49,22 +36,6 @@
       } else {
         banner.style.display = "none";
       }
-    });
-
-    // 랭킹 마법
-    onValue(ref(db, 'scores'), (snapshot) => {
-      const data = snapshot.val();
-      const rankBox = document.getElementById("miniRankBox");
-      if (!data) return;
-      let arr = [];
-      for (let name in data) arr.push({ name: name, score: data[name] });
-      arr.sort((a, b) => b.score - a.score);
-      let html = "";
-      let medals = ["🥇", "🥈", "🥉"];
-      for (let i = 0; i < Math.min(3, arr.length); i++) {
-        html += `<div class='mini-rank-item'>${medals[i]} ${i+1}등: ${arr[i].name} (${arr[i].score}점)</div>`;
-      }
-      rankBox.innerHTML = html;
     });
   </script>
 </body>
