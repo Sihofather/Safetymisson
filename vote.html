@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스마트 투표함</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body { text-align: center; background-color: #fff8e1; font-family: sans-serif; padding: 20px; font-size: 20px; }
+    .box { background-color: white; padding: 25px; border-radius: 20px; display: inline-block; border: 3px solid #ffb300; width: 95%; max-width: 500px; text-align: left;}
+    h2 { font-size: 30px; text-align: center; color: #f57f17; }
+    input[type=text] { padding: 15px; font-size: 22px; width: 100%; margin-bottom: 25px; text-align: center; border: 2px solid #ccc; border-radius: 10px; box-sizing: border-box;}
+    
+    /* 투표 항목 디자인 (크고 누르기 편하게) */
+    .vote-option { display: flex; align-items: center; background-color: #fffde7; border: 2px solid #ffe082; padding: 15px; margin-bottom: 10px; border-radius: 10px; cursor: pointer; }
+    .vote-option:hover { background-color: #ffecb3; }
+    .vote-option input[type="radio"] { transform: scale(1.8); margin-right: 15px; }
+    .vote-option span { font-size: 20px; font-weight: bold; color: #333; }
+
+    button { padding: 20px; font-size: 22px; font-weight: bold; background-color: #ff9800; color: white; border: none; border-radius: 12px; cursor: pointer; width: 100%; margin-top: 20px;}
+    .home-link { display: block; text-align: center; font-size: 20px; text-decoration: none; color: #555; font-weight: bold; margin-top: 20px; padding: 15px; background-color: #eee; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2 id="voteTitleDisplay">불러오는 중...</h2>
+    
+    <div style="text-align: center;">
+      <input type="text" id="voterName" placeholder="본인 이름을 입력하세요">
+    </div>
+
+    <div id="optionsArea">
+      </div>
+
+    <button id="submitVoteBtn">투표 제출하기</button>
+    <a href="index.html" class="home-link">🏠 홈으로 돌아가기</a>
+  </div>
+
+  <script type="module">
+    import { db, ref, get, set, onValue } from "./firebase-setup.js";
+
+    let currentOptions = [];
+
+    // 관리자가 설정한 투표 데이터 불러오기
+    onValue(ref(db, 'settings/voting'), (snap) => {
+      const data = snap.val();
+      if(data && data.isActive) {
+        document.getElementById('voteTitleDisplay').innerText = `🗳️ ${data.title}`;
+        currentOptions = data.options || [];
+        
+        let html = '';
+        currentOptions.forEach((opt, index) => {
+          html += `
+            <label class="vote-option">
+              <input type="radio" name="voteItem" value="${opt}">
+              <span>${opt}</span>
+            </label>
+          `;
+        });
+        document.getElementById('optionsArea').innerHTML = html;
+      } else {
+        document.getElementById('voteTitleDisplay').innerText = "현재 진행 중인 투표가 없습니다.";
+        document.getElementById('submitVoteBtn').style.display = "none";
+      }
+    });
+
+    // 투표 제출 마법
+    document.getElementById('submitVoteBtn').onclick = async () => {
+      const name = document.getElementById('voterName').value.trim();
+      if(!name) return Swal.fire('알림', '이름을 먼저 입력해주세요!', 'warning');
+
+      // 등록된 직원인지 확인
+      const userSnap = await get(ref(db, `scores/${name}`));
+      if(!userSnap.exists()) return Swal.fire('오류', '등록되지 않은 이름입니다.', 'error');
+
+      // 항목 선택 확인
+      const selectedOption = document.querySelector('input[name="voteItem"]:checked');
+      if(!selectedOption) return Swal.fire('알림', '투표할 항목을 하나 선택해주세요!', 'warning');
+
+      // 이미 투표했는지 중복 확인
+      const voteSnap = await get(ref(db, `votes/${name}`));
+      if(voteSnap.exists()) {
+        return Swal.fire('안내', '이미 소중한 한 표를 행사하셨습니다. 참여해주셔서 감사합니다!', 'info');
+      }
+
+      // 투표 저장
+      await set(ref(db, `votes/${name}`), {
+        selected: selectedOption.value,
+        time: new Date().toLocaleString('ko-KR')
+      });
+
+      Swal.fire('투표 완료!', '투표가 성공적으로 반영되었습니다. 감사합니다!', 'success').then(() => {
+        location.href = 'index.html'; // 홈으로 돌려보내기
+      });
+    };
+  </script>
+</body>
+</html>
