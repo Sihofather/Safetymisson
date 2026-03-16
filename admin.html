@@ -7,128 +7,162 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { text-align: center; background-color: #fff3e0; font-family: sans-serif; padding: 20px; }
-    .box { background-color: white; padding: 25px; border-radius: 15px; display: inline-block; border: 2px solid #ff9800; max-width: 800px; width: 95%; text-align: left; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 20px; }
-    h2 { text-align: center; color: #e65100; font-size: 34px; margin-bottom: 30px; }
-    input, button, select { padding: 15px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; font-size: 20px; width: 100%; box-sizing: border-box; }
-    button { background-color: #ff9800; color: white; border: none; cursor: pointer; font-weight: bold; margin-bottom: 15px; }
+    .box { background-color: white; padding: 25px; border-radius: 15px; display: inline-block; border: 2px solid #ff9800; max-width: 800px; width: 95%; text-align: left; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 18px; }
+    h2 { text-align: center; color: #e65100; font-size: 30px; margin-bottom: 20px; }
+    input, button, select { padding: 12px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; font-size: 18px; width: 100%; box-sizing: border-box; }
+    button { background-color: #ff9800; color: white; border: none; cursor: pointer; font-weight: bold; }
     button:hover { background-color: #f57c00; }
-    h3 { color: #d84315; border-bottom: 2px solid #ffe0b2; padding-bottom: 5px; margin-top: 40px; font-size: 26px; }
-    .history-item, .user-list-item, .req-item { font-size: 18px; padding: 15px; background-color: #fafafa; border-left: 5px solid #ff9800; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 5px 5px 0; }
-    .btn-small { background-color: #4CAF50; padding: 10px 15px; font-size: 16px; width: auto; margin: 0 5px; }
-    .btn-delete { background-color: #e53935; padding: 10px 15px; font-size: 16px; width: auto; margin: 0 0 0 10px; }
-    #adminChatArea { height: 300px; overflow-y: auto; border: 1px solid #ccc; background-color: #f5f5f5; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
-    .msg-worker { text-align: left; margin: 10px 0; }
-    .msg-admin { text-align: right; margin: 10px 0; }
-    .bubble { display: inline-block; padding: 10px; border-radius: 10px; max-width: 80%; font-size: 18px; word-break: break-all; }
+    h3 { color: #d84315; border-bottom: 2px solid #ffe0b2; padding-bottom: 5px; margin-top: 30px; font-size: 22px; }
+    
+    /* ⭐ 탭 메뉴 스타일 ⭐ */
+    .tab-menu { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px; }
+    .tab-btn { flex: 1; padding: 10px; font-size: 16px; background-color: #ffe0b2; color: #e65100; border: 1px solid #ffb74d; border-radius: 5px; min-width: 100px; }
+    .tab-btn.active { background-color: #ff9800; color: white; font-weight: bold; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* 공통 리스트 스타일 */
+    .list-item { font-size: 16px; padding: 15px; background-color: #fafafa; border-left: 5px solid #ff9800; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 5px 5px 0; }
+    .btn-small { background-color: #4CAF50; padding: 8px 12px; font-size: 14px; width: auto; margin: 0 5px; }
+    .btn-delete { background-color: #e53935; padding: 8px 12px; font-size: 14px; width: auto; }
+    
+    /* 채팅 관련 */
+    #allMsgArea { max-height: 250px; overflow-y: auto; border: 1px solid #ccc; background-color: #fffde7; padding: 10px; border-radius: 8px; margin-bottom: 20px; }
+    #adminChatArea { height: 250px; overflow-y: auto; border: 1px solid #ccc; background-color: #f5f5f5; padding: 10px; border-radius: 8px; }
+    .bubble { display: inline-block; padding: 8px 12px; border-radius: 10px; max-width: 80%; word-break: break-all; margin-top: 5px; }
     .bubble-worker { background-color: #fff; border: 1px solid #ccc; }
     .bubble-admin { background-color: #ffcc80; color: #000; }
-    .time-text { font-size: 12px; color: gray; }
   </style>
 </head>
 <body>
   <div class="box">
     <h2>👨‍💼 관리자 모드</h2>
 
-    <h3 style="margin-top: 0;">🛠️ 추가 안전 미션 설정</h3>
-    <div style="display:flex; gap:10px;">
-      <input type="text" id="customMissionInput" placeholder="예: 작업장 정리정돈">
-      <button id="customMissionBtn" style="background-color:#8e24aa; width:150px;">적용</button>
-      <button id="customMissionDelBtn" style="background-color:#757575; width:150px;">삭제</button>
+    <div class="tab-menu">
+      <button class="tab-btn active" onclick="showTab('tab1', this)">추가 미션</button>
+      <button class="tab-btn" onclick="showTab('tab2', this)">전체 공지</button>
+      <button class="tab-btn" onclick="showTab('tab3', this)">쪽지함</button>
+      <button class="tab-btn" onclick="showTab('tab4', this)">직원 관리</button>
+      <button class="tab-btn" onclick="showTab('tab5', this)">임시 목록(투표)</button>
     </div>
 
-    <h3>📢 전체 공지 (현수막 달기)</h3>
-    <input type="text" id="bannerText" placeholder="예: 오늘 15시부터 정전입니다.">
-    <div style="display:flex; gap:10px;">
-      <button id="bannerBtn" style="background-color:#d32f2f;">현수막 걸기</button>
-      <button id="bannerClearBtn" style="background-color:#757575;">현수막 내리기</button>
+    <div id="tab1" class="tab-content active">
+      <h3 style="margin-top:0;">🛠️ 추가 안전 미션 설정</h3>
+      <div style="display:flex; gap:10px;">
+        <input type="text" id="customMissionInput" placeholder="예: 작업장 정리정돈">
+        <button id="customMissionBtn" style="background-color:#8e24aa; width:100px;">적용</button>
+        <button id="customMissionDelBtn" style="background-color:#757575; width:100px;">삭제</button>
+      </div>
     </div>
 
-    <h3>🔔 승인 대기 목록 (건당 30점)</h3>
-    <div id="requestArea" style="min-height: 50px; border: 1px solid #eee; padding: 10px;">로딩 중...</div>
-
-    <h3>✉️ 1:1 건의함 (쪽지 보내기)</h3>
-    <select id="msgUserSelect"><option value="">직원을 선택하세요</option></select>
-    <div id="adminChatArea">선택하면 대화가 보입니다.</div>
-    <div style="display:flex; gap:10px;">
-      <input type="text" id="adminMsgInput" placeholder="답글 또는 쪽지 내용 입력">
-      <button id="adminMsgBtn" style="width: 100px; margin: 5px 0;">전송</button>
+    <div id="tab2" class="tab-content">
+      <h3 style="margin-top:0;">📢 전체 공지 (현수막 달기)</h3>
+      <input type="text" id="bannerText" placeholder="예: 오늘 15시부터 정전입니다.">
+      <div style="display:flex; gap:10px;">
+        <button id="bannerBtn" style="background-color:#d32f2f;">현수막 걸기</button>
+        <button id="bannerClearBtn" style="background-color:#757575;">현수막 내리기</button>
+      </div>
     </div>
 
-    <h3>📊 상세 통계 (미션 항목별 분석)</h3>
-    <select id="statUserSelect"><option value="">직원을 선택하세요</option></select>
-    <div style="display:flex; gap:10px;">
-      <select id="statTypeSelect" style="width: 50%;">
-        <option value="daily">일별 조회</option>
-        <option value="monthly">월별 조회 (누적)</option>
-      </select>
-      <input type="date" id="statDateInput" style="width: 50%;">
-      <input type="month" id="statMonthInput" style="display: none; width: 50%;">
-    </div>
-    <button id="drawChartBtn" style="background-color: #1976D2; width: 100%; margin-top:10px;">그래프 조회하기</button>
-    
-    <div style="background: white; padding: 10px; border: 1px solid #ccc; border-radius: 10px; margin-top: 10px;">
-      <canvas id="myChart"></canvas>
+    <div id="tab3" class="tab-content">
+      <h3 style="margin-top:0;">📫 통합 수신 쪽지함 (직원들이 보낸 메시지)</h3>
+      <div id="allMsgArea">로딩 중...</div>
+
+      <h3>✉️ 직원 선택하여 대화 및 답장하기</h3>
+      <select id="msgUserSelect"><option value="">직원을 선택하세요</option></select>
+      <div id="adminChatArea">선택하면 대화가 보입니다.</div>
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <input type="text" id="adminMsgInput" placeholder="답장 내용을 입력하세요">
+        <button id="adminMsgBtn" style="width: 100px; margin:0;">전송</button>
+      </div>
     </div>
 
-    <h3>📝 전체 직원 목록</h3>
-    <div id="userListArea" style="max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px;"></div>
+    <div id="tab4" class="tab-content">
+      <h3 style="margin-top:0;">🔔 승인 대기 목록 (건당 30점)</h3>
+      <div id="requestArea" style="min-height: 50px; border: 1px solid #eee; padding: 10px;">로딩 중...</div>
 
-    <h3>➕ 새 직원 등록</h3>
-    <div style="display:flex; gap:10px;">
-      <input type="text" id="newName" placeholder="새 직원 이름 입력">
-      <button id="regBtn" style="width: 150px; margin: 5px 0;">등록</button>
+      <h3>📊 상세 통계 (미참여 인원 및 항목별 분석)</h3>
+      <select id="statUserSelect"><option value="ALL">전체 직원 합산 보기 (또는 개인 선택)</option></select>
+      <div style="display:flex; gap:10px;">
+        <select id="statTypeSelect" style="width: 50%;">
+          <option value="daily">일별 조회 (미참여 인원 확인)</option>
+          <option value="monthly">월별 조회 (누적)</option>
+        </select>
+        <input type="date" id="statDateInput" style="width: 50%;">
+        <input type="month" id="statMonthInput" style="display: none; width: 50%;">
+      </div>
+      <button id="drawChartBtn" style="background-color: #1976D2; width: 100%; margin-top:10px;">그래프 조회하기</button>
+      
+      <div id="inactiveUsersArea" style="margin-top: 15px; padding: 10px; background-color: #ffebee; border-radius: 8px; display: none;"></div>
+      
+      <div style="background: white; padding: 10px; border: 1px solid #ccc; border-radius: 10px; margin-top: 10px;">
+        <canvas id="myChart"></canvas>
+      </div>
+
+      <h3>📝 전체 직원 목록 및 원점수</h3>
+      <div id="userListArea" style="max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px;"></div>
+
+      <h3>➕ 새 직원 등록</h3>
+      <div style="display:flex; gap:10px;">
+        <input type="text" id="newName" placeholder="새 직원 이름 입력">
+        <button id="regBtn" style="width: 100px; margin:0;">등록</button>
+      </div>
+    </div>
+
+    <div id="tab5" class="tab-content">
+      <h3 style="margin-top:0;">🗳️ 임시 목록 지정 (투표함 만들기)</h3>
+      
+      <div style="background-color:#f3e5f5; padding:15px; border-radius:10px; margin-bottom:15px;">
+        <label><input type="checkbox" id="voteActiveCheck" style="width:auto; transform:scale(1.5); margin-right:10px;"><b>홈 화면에 탭 활성화 하기</b></label>
+        <input type="text" id="voteTitleInput" placeholder="탭 제목 입력 (예: 안전표어 공모전 투표함)">
+        
+        <div style="display:flex; gap:10px; margin-top:10px;">
+          <input type="number" id="voteCountInput" placeholder="투표 항목 개수 (예: 20)">
+          <button id="genVoteInputsBtn" style="background-color:#ab47bc; width:120px; margin:0;">입력칸 생성</button>
+        </div>
+      </div>
+
+      <div id="voteInputsArea" style="max-height:250px; overflow-y:auto; margin-bottom:15px;"></div>
+      
+      <button id="saveVoteBtn" style="background-color:#8e24aa; width:100%;">투표 설정 저장 및 배포하기</button>
+
+      <h3>📊 현재 투표 현황 (관리자용)</h3>
+      <div id="voteResultArea" style="padding:10px; border:1px solid #ccc; border-radius:8px; background-color:#fff;">투표를 설정하면 결과가 보입니다.</div>
     </div>
 
     <div style="text-align: center; margin-top: 40px;">
-      <button onclick="location.href='index.html'" style="background-color: #555; padding: 20px;">🏠 홈으로 돌아가기</button>
+      <button onclick="location.href='index.html'" style="background-color: #555; padding: 15px; width: 60%;">🏠 홈으로 돌아가기</button>
     </div>
   </div>
 
   <script type="module">
     import { db, ref, set, get, push, onValue } from "./firebase-setup.js";
 
-    // 날짜 입력창 기본값 오늘/이번달로 세팅
+    // ⭐ 탭 메뉴 전환 마법 ⭐
+    window.showTab = (tabId, btn) => {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+    };
+
+    // 날짜 기본값 세팅
     const today = new Date();
     document.getElementById('statDateInput').value = today.toISOString().split('T')[0];
     document.getElementById('statMonthInput').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
 
-    // 미션, 현수막, 승인대기, 직원목록, 쪽지함 로직
+    let allUsers = []; // 통계 미참여자 계산용
+
+    // 1. 미션 & 현수막
     onValue(ref(db, 'settings/customMission'), (snap) => {
-      if(snap.exists() && snap.val()) document.getElementById('customMissionInput').value = snap.val();
-      else document.getElementById('customMissionInput').value = "";
+      document.getElementById('customMissionInput').value = snap.exists() ? snap.val() : "";
     });
     document.getElementById('customMissionBtn').onclick = async () => {
       const text = document.getElementById('customMissionInput').value.trim();
-      if(!text) return alert("미션 내용을 입력하세요!");
-      await set(ref(db, 'settings/customMission'), text); alert("추가 미션 적용 완료!");
+      if(text) { await set(ref(db, 'settings/customMission'), text); alert("적용 완료!"); }
     };
     document.getElementById('customMissionDelBtn').onclick = async () => { await set(ref(db, 'settings/customMission'), null); alert("삭제 완료!"); };
-
-    onValue(ref(db, 'scores'), (snap) => {
-      const msgSelect = document.getElementById('msgUserSelect');
-      const statSelect = document.getElementById('statUserSelect');
-      const listArea = document.getElementById('userListArea');
-      msgSelect.innerHTML = '<option value="">직원을 선택하세요</option>';
-      statSelect.innerHTML = '<option value="">직원을 선택하세요</option>';
-      listArea.innerHTML = "";
-      if(snap.exists()) {
-        const data = snap.val();
-        for(let name in data) {
-          msgSelect.innerHTML += `<option value="${name}">${name} 님</option>`;
-          statSelect.innerHTML += `<option value="${name}">${name} 님</option>`;
-          listArea.innerHTML += `<div class='user-list-item'><span>${name}</span> <div><b>${data[name]}점</b> <button class="btn-delete" onclick="deleteUser('${name}')">삭제</button></div></div>`;
-        }
-      }
-    });
-
-    document.getElementById('regBtn').onclick = async () => {
-      const name = document.getElementById('newName').value.trim();
-      if(!name) return; await set(ref(db, `scores/${name}`), 0);
-      document.getElementById('newName').value = ""; alert(name + "님 등록 완료!");
-    };
-    window.deleteUser = async (name) => {
-      if(!confirm(`정말로 삭제하시겠습니까?`)) return; await set(ref(db, `scores/${name}`), null);
-    };
 
     document.getElementById('bannerBtn').onclick = async () => {
       const text = document.getElementById('bannerText').value.trim();
@@ -136,135 +170,249 @@
     };
     document.getElementById('bannerClearBtn').onclick = async () => { await set(ref(db, 'settings/banner'), null); };
 
+    // 2. 직원 관리 데이터
+    onValue(ref(db, 'scores'), (snap) => {
+      const msgSelect = document.getElementById('msgUserSelect');
+      const statSelect = document.getElementById('statUserSelect');
+      const listArea = document.getElementById('userListArea');
+      msgSelect.innerHTML = '<option value="">직원을 선택하세요</option>';
+      statSelect.innerHTML = '<option value="ALL">전체 합산 보기</option>';
+      listArea.innerHTML = "";
+      allUsers = [];
+
+      if(snap.exists()) {
+        const data = snap.val();
+        for(let name in data) {
+          allUsers.push(name);
+          msgSelect.innerHTML += `<option value="${name}">${name} 님</option>`;
+          statSelect.innerHTML += `<option value="${name}">${name} 님</option>`;
+          listArea.innerHTML += `<div class='list-item'><span>${name}</span> <div><b>${data[name]}점</b> <button class="btn-delete" onclick="deleteUser('${name}')">삭제</button></div></div>`;
+        }
+      }
+    });
+
+    document.getElementById('regBtn').onclick = async () => {
+      const name = document.getElementById('newName').value.trim();
+      if(name) { await set(ref(db, `scores/${name}`), 0); document.getElementById('newName').value = ""; alert("등록 완료!"); }
+    };
+    window.deleteUser = async (name) => {
+      if(confirm(`정말로 삭제하시겠습니까?`)) await set(ref(db, `scores/${name}`), null);
+    };
+
+    // 3. 승인 대기
     onValue(ref(db, 'requests'), (snap) => {
       const area = document.getElementById('requestArea'); area.innerHTML = ""; const data = snap.val();
       if(!data) { area.innerHTML = "<div style='color:gray;'>대기 중인 요청이 없습니다.</div>"; return; }
       for(let key in data) {
         const req = data[key];
-        area.innerHTML += `<div class='req-item'><div><b>${req.name}</b> <small>${req.date}</small><br>${req.mission}</div><div><button class="btn-small" onclick="approveReq('${key}', '${req.name}', '${req.mission}', '${req.date}')">승인</button><button class="btn-delete" onclick="rejectReq('${key}')">반려</button></div></div>`;
+        area.innerHTML += `<div class='list-item'><div><b>${req.name}</b> <small>${req.date}</small><br>${req.mission}</div><div><button class="btn-small" onclick="approveReq('${key}', '${req.name}', '${req.mission}', '${req.date}')">승인</button><button class="btn-delete" onclick="rejectReq('${key}')">반려</button></div></div>`;
       }
     });
     window.approveReq = async (key, name, mission, date) => {
-      if(!confirm(`승인하고 30점을 부여할까요?`)) return;
       const scoreSnap = await get(ref(db, `scores/${name}`));
       await set(ref(db, `scores/${name}`), (scoreSnap.exists() ? scoreSnap.val() : 0) + 30);
       await set(push(ref(db, 'history')), { date: date, name: name, mission: mission + "(관리자승인)", point: 30 });
       await set(ref(db, `requests/${key}`), null);
       await set(ref(db, `stamps/${name}/${date.replace(/\\./g, '').replace(/ /g, '-')}/${mission}`), true);
     };
-    window.rejectReq = async (key) => { if(confirm("반려하시겠습니까?")) await set(ref(db, `requests/${key}`), null); };
+    window.rejectReq = async (key) => { await set(ref(db, `requests/${key}`), null); };
+
+    // ⭐ 4. 쪽지함 마법 (통합 조회 + 답장 연동) ⭐
+    onValue(ref(db, 'messages'), (snap) => {
+      const allArea = document.getElementById('allMsgArea');
+      allArea.innerHTML = "";
+      if(!snap.exists()) { allArea.innerHTML = "수신된 쪽지가 없습니다."; return; }
+      
+      let msgList = [];
+      const usersData = snap.val();
+      for(let user in usersData) {
+        for(let pushId in usersData[user]) {
+          const m = usersData[user][pushId];
+          if(m.sender === 'worker') { msgList.push({ user, pushId, ...m }); }
+        }
+      }
+      
+      // 최신순 정렬 (Push ID 역순)
+      msgList.reverse();
+      if(msgList.length === 0) { allArea.innerHTML = "직원들이 보낸 쪽지가 없습니다."; return; }
+
+      msgList.forEach(m => {
+        allArea.innerHTML += `
+          <div style="border-bottom: 1px dashed #ccc; padding: 10px 0;">
+            <div style="font-size: 14px; color: #555;"><b>${m.user}</b> <span style="font-size:12px;color:gray;">(${m.time})</span></div>
+            <div style="font-size: 18px; margin: 5px 0;">${m.text}</div>
+            <button class="btn-small" style="background-color:#2196F3;" onclick="replyTo('${m.user}')">↪️ 답장하기</button>
+          </div>
+        `;
+      });
+    });
+
+    window.replyTo = (user) => {
+      document.getElementById('msgUserSelect').value = user;
+      document.getElementById('msgUserSelect').dispatchEvent(new Event('change'));
+      document.getElementById('adminMsgInput').focus();
+    };
 
     let currentChatUser = "";
     document.getElementById('msgUserSelect').onchange = (e) => {
       currentChatUser = e.target.value; const area = document.getElementById('adminChatArea');
-      if(!currentChatUser) return area.innerHTML = "선택해주세요.";
+      if(!currentChatUser) { area.innerHTML = "선택해주세요."; return; }
       onValue(ref(db, `messages/${currentChatUser}`), (snap) => {
         area.innerHTML = ""; const data = snap.val();
-        if(!data) return area.innerHTML = "<p>대화가 없습니다.</p>";
+        if(!data) { area.innerHTML = "대화가 없습니다."; return; }
         for(let key in data) {
           const msg = data[key]; const isMe = msg.sender === 'admin';
-          area.innerHTML += `<div class="${isMe ? 'msg-admin' : 'msg-worker'}"><span class="time-text">${isMe ? '' : currentChatUser}</span><div class="bubble ${isMe ? 'bubble-admin' : 'bubble-worker'}">${msg.text}</div><span class="time-text">${msg.time}</span></div>`;
+          area.innerHTML += `<div style="text-align:${isMe?'right':'left'}"><div class="bubble ${isMe?'bubble-admin':'bubble-worker'}">${msg.text}</div><br><span style="font-size:12px;color:gray;">${msg.time}</span></div>`;
         }
         area.scrollTop = area.scrollHeight;
       });
     };
     document.getElementById('adminMsgBtn').onclick = async () => {
       const text = document.getElementById('adminMsgInput').value.trim();
-      if(!text || !currentChatUser) return;
-      await set(push(ref(db, `messages/${currentChatUser}`)), { sender: 'admin', text: text, time: new Date().toLocaleString('ko-KR', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) });
-      document.getElementById('adminMsgInput').value = "";
+      if(text && currentChatUser) {
+        await set(push(ref(db, `messages/${currentChatUser}`)), { sender: 'admin', text: text, time: new Date().toLocaleString('ko-KR', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) });
+        document.getElementById('adminMsgInput').value = "";
+      }
     };
 
-    // --- ⭐ 통계 그래프 (항목별 가로축 고정 배치) ⭐ ---
+    // ⭐ 5. 투표(임시 목록) 시스템 마법 ⭐
+    // 기존 설정 불러오기
+    onValue(ref(db, 'settings/voting'), (snap) => {
+      if(snap.exists()) {
+        const v = snap.val();
+        document.getElementById('voteActiveCheck').checked = v.isActive;
+        document.getElementById('voteTitleInput').value = v.title;
+        // 결과 집계 (votes 데이터 필요)
+        get(ref(db, 'votes')).then(voteSnap => {
+          const resultArea = document.getElementById('voteResultArea');
+          if(!voteSnap.exists()) { resultArea.innerHTML = "아직 투표한 사람이 없습니다."; return; }
+          const votes = voteSnap.val();
+          let tally = {};
+          let total = 0;
+          v.options.forEach(opt => tally[opt] = 0); // 초기화
+          for(let user in votes) { tally[votes[user].selected] = (tally[votes[user].selected] || 0) + 1; total++; }
+          
+          let html = `<div style="font-weight:bold; margin-bottom:10px;">총 투표수: ${total}명</div>`;
+          v.options.forEach(opt => {
+            let count = tally[opt] || 0;
+            let percent = total === 0 ? 0 : Math.round((count/total)*100);
+            html += `
+              <div style="margin-bottom:8px; text-align:left;">
+                <div>${opt} (${count}표, ${percent}%)</div>
+                <div style="background:#eee; height:15px; border-radius:10px; overflow:hidden;">
+                  <div style="background:#ff9800; width:${percent}%; height:100%;"></div>
+                </div>
+              </div>`;
+          });
+          resultArea.innerHTML = html;
+        });
+      }
+    });
+
+    document.getElementById('genVoteInputsBtn').onclick = () => {
+      const count = parseInt(document.getElementById('voteCountInput').value);
+      if(!count || count < 1) return alert("1 이상의 숫자를 입력하세요.");
+      let html = '';
+      for(let i=0; i<count; i++) {
+        html += `<input type="text" class="vote-item-input" placeholder="후보 항목 ${i+1}">`;
+      }
+      document.getElementById('voteInputsArea').innerHTML = html;
+    };
+
+    document.getElementById('saveVoteBtn').onclick = async () => {
+      const isActive = document.getElementById('voteActiveCheck').checked;
+      const title = document.getElementById('voteTitleInput').value.trim();
+      const inputs = document.querySelectorAll('.vote-item-input');
+      let options = [];
+      inputs.forEach(inp => { if(inp.value.trim()) options.push(inp.value.trim()); });
+      
+      if(isActive && (!title || options.length === 0)) {
+        return alert("활성화하려면 제목과 하나 이상의 투표 항목이 필요합니다!");
+      }
+
+      await set(ref(db, 'settings/voting'), { isActive, title, options });
+      alert("투표 설정이 저장되어 홈 화면에 반영되었습니다!");
+    };
+
+
+    // ⭐ 6. 통계 차트 (미참여 인원 표시 + 가시성 향상) ⭐
     let myChartInstance = null; let allHistory = [];
     onValue(ref(db, 'history'), (snap) => {
       allHistory = []; if(snap.exists()) { const data = snap.val(); for(let key in data) allHistory.push(data[key]); }
     });
 
     document.getElementById('statTypeSelect').onchange = (e) => {
-      if(e.target.value === 'daily') {
-        document.getElementById('statDateInput').style.display = 'block';
-        document.getElementById('statMonthInput').style.display = 'none';
-      } else {
-        document.getElementById('statDateInput').style.display = 'none';
-        document.getElementById('statMonthInput').style.display = 'block';
-      }
+      document.getElementById('statDateInput').style.display = e.target.value === 'daily' ? 'block' : 'none';
+      document.getElementById('statMonthInput').style.display = e.target.value === 'monthly' ? 'block' : 'none';
     };
 
     document.getElementById('drawChartBtn').onclick = () => {
       const name = document.getElementById('statUserSelect').value;
       const type = document.getElementById('statTypeSelect').value;
-      if(!name) return alert("직원을 선택하세요!");
-
+      const inactiveArea = document.getElementById('inactiveUsersArea');
+      
       let targetDateStr = "";
       if (type === 'daily') {
-        const dateVal = document.getElementById('statDateInput').value;
-        if(!dateVal) return alert("조회할 날짜를 선택하세요!");
-        targetDateStr = new Date(dateVal).toLocaleDateString('ko-KR'); 
+        targetDateStr = new Date(document.getElementById('statDateInput').value).toLocaleDateString('ko-KR'); 
       } else {
-        const monthVal = document.getElementById('statMonthInput').value; 
-        if(!monthVal) return alert("조회할 달을 선택하세요!");
-        const [y, m] = monthVal.split('-');
+        const [y, m] = document.getElementById('statMonthInput').value.split('-');
         targetDateStr = `${y}. ${parseInt(m)}.`; 
       }
 
+      // ⭐ 미참여 인원 (0점) 확인 로직 (일별 조회 시에만) ⭐
+      if(type === 'daily') {
+        const activeUsersThisDate = new Set(allHistory.filter(h => h.date === targetDateStr).map(h => h.name));
+        const inactiveUsers = allUsers.filter(u => !activeUsersThisDate.has(u));
+        
+        inactiveArea.style.display = "block";
+        if(inactiveUsers.length > 0) {
+          inactiveArea.innerHTML = `<span style="color:#d32f2f; font-weight:bold;">🚨 미참여 인원 (0점):</span> ${inactiveUsers.join(', ')}`;
+        } else {
+          inactiveArea.innerHTML = `<span style="color:#388e3c; font-weight:bold;">✅ 전원 참여 완료! 훌륭합니다!</span>`;
+        }
+      } else {
+        inactiveArea.style.display = "none";
+      }
+
       const userHistory = allHistory.filter(h => {
-         if(h.name !== name) return false;
+         if(name !== "ALL" && h.name !== name) return false;
          if(type === 'daily') return h.date === targetDateStr;
          return h.date.startsWith(targetDateStr); 
       });
 
-      // ⭐ 모든 기본 미션을 0점으로 뼈대(틀) 만들기 ⭐
-      const itemScores = {
-        "TBM": 0, "보호구 착용": 0, "안전가이드 활동": 0, 
-        "작업 전 스트레칭": 0, "작업 전 1분 멈춤": 0, 
-        "아차사고": 0, "제안제출": 0
-      };
-      
-      // 커스텀 미션이 설정되어 있다면 축에 포함
+      const itemScores = { "TBM": 0, "보호구 착용": 0, "안전가이드 활동": 0, "작업 전 스트레칭": 0, "작업 전 1분 멈춤": 0, "아차사고": 0, "제안제출": 0 };
       const customMission = document.getElementById('customMissionInput').value.trim();
-      if(customMission && itemScores[customMission] === undefined) {
-        itemScores[customMission] = 0;
-      }
+      if(customMission) itemScores[customMission] = 0;
 
       let totalScore = 0;
-
-      // 실제 기록된 점수 덮어씌우기
       userHistory.forEach(h => {
         let baseMission = h.mission.split('(')[0]; 
-        if(itemScores[baseMission] === undefined) itemScores[baseMission] = 0; // 혹시 과거에 다른 이름의 미션이 있었다면 추가
+        if(itemScores[baseMission] === undefined) itemScores[baseMission] = 0; 
         itemScores[baseMission] += h.point;
         totalScore += h.point;
       });
 
-      // 가로축 라벨 구성: [각 미션 이름들..., "총 점수"]
-      const labels = Object.keys(itemScores);
-      labels.push(type === 'daily' ? "일일 총 점수" : "월간 총 점수");
-      
-      const dataPoints = Object.values(itemScores);
-      dataPoints.push(totalScore);
-
+      const labels = Object.keys(itemScores); labels.push("총 점수 합계");
+      const dataPoints = Object.values(itemScores); dataPoints.push(totalScore);
       const bgColors = labels.map((l, idx) => idx === labels.length - 1 ? 'rgba(230, 81, 0, 0.8)' : 'rgba(33, 150, 243, 0.6)');
-      const borderColors = labels.map((l, idx) => idx === labels.length - 1 ? 'rgba(230, 81, 0, 1)' : 'rgba(33, 150, 243, 1)');
 
       const ctx = document.getElementById('myChart').getContext('2d');
       if (myChartInstance) myChartInstance.destroy(); 
 
       myChartInstance = new Chart(ctx, {
         type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: '획득 점수',
-            data: dataPoints,
-            backgroundColor: bgColors,
-            borderColor: borderColors,
-            borderWidth: 1
-          }]
-        },
+        data: { labels: labels, datasets: [{ label: '점수', data: dataPoints, backgroundColor: bgColors, borderWidth: 1 }] },
         options: {
-          scales: { y: { beginAtZero: true } },
-          plugins: { legend: { display: false } }
+          scales: { 
+            y: { 
+              beginAtZero: true, 
+              // ⭐ 시인성 확보: 값이 적어도 막대가 조금 올라오게 보이도록 여백 추가
+              suggestedMax: Math.max(...dataPoints) < 10 ? 10 : undefined 
+            } 
+          },
+          plugins: { legend: { display: false } },
+          // 막대 굵기 조절
+          barPercentage: 0.6
         }
       });
     };
