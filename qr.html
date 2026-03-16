@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>스마트 안전 미션</title>
+  <title>일일 안전 미션 확인</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     body { text-align: center; background-color: #f0f4c3; font-family: sans-serif; padding: 20px; font-size: 20px; }
@@ -14,9 +14,13 @@
     .group-title { font-size: 22px; color: #827717; font-weight: bold; margin-bottom: 15px; text-align: left; }
     .mission-btn { padding: 20px; margin: 8px 0; font-size: 22px; font-weight: bold; color: white; border: none; border-radius: 12px; cursor: pointer; width: 100%; display: block; line-height: 1.4; }
     .btn-self { background-color: #ff7043; } 
-    .btn-custom { background-color: #8e24aa; } /* 커스텀 미션 보라색 버튼 */
+    .btn-custom { background-color: #8e24aa; } 
     .btn-admin { background-color: #26a69a; } 
-    .qr-image { width: 220px; border: 3px solid #ccc; border-radius: 15px; margin: 20px 0; }
+    
+    /* ⭐ QR 이미지 마우스 오버 시 손가락 모양 나오게 설정 ⭐ */
+    .qr-image { width: 220px; border: 3px solid #ccc; border-radius: 15px; margin: 15px 0; cursor: pointer; transition: transform 0.2s; }
+    .qr-image:hover { transform: scale(1.05); border-color: #26a69a; }
+    
     #qrResult { margin-top: 20px; font-size: 20px; font-weight: bold; }
     a.home-link { font-size: 20px; text-decoration: none; color: #555; font-weight: bold; display: inline-block; margin-top: 20px; padding: 15px; background-color: #eee; border-radius: 10px; width: 80%; }
 
@@ -28,7 +32,7 @@
 </head>
 <body>
   <div class="box">
-    <h2>📝 안전 미션 수행</h2>
+    <h2>📝 일일 안전 미션 수행</h2>
     <input type="text" id="qrName" placeholder="본인 이름을 입력하세요">
     
     <div class="mission-group">
@@ -44,8 +48,9 @@
 
     <div class="mission-group">
       <div class="group-title">👨‍💼 나의 제안 (관리자 승인)</div>
-      <p style="font-size: 16px; color: #555; margin-bottom: 10px;">👇 QR코드를 찍어 내용을 제출한 뒤,<br>아래 버튼으로 관리자에게 승인을 요청하세요!</p>
-      <img src="제안QR.jpg" alt="제안 QR" class="qr-image">
+      <p style="font-size: 16px; color: #555; margin-bottom: 5px;">👇 아래 <b>QR 이미지를 직접 터치(클릭)</b>해서<br>내용을 제출한 뒤, 관리자에게 승인을 요청하세요!</p>
+      <img src="제안QR.jpg" alt="제안 QR" class="qr-image" onclick="window.open('https://m.site.naver.com/1Y8hh', '_blank')">
+      
       <button class="mission-btn btn-admin" id="btn-system">아차사고 승인 요청</button>
       <button class="mission-btn btn-admin" id="btn-propose">제안제출 승인 요청</button>
     </div>
@@ -58,7 +63,6 @@
     import { db, ref, set, get, push, onValue } from "./firebase-setup.js";
     const resultDiv = document.getElementById("qrResult");
 
-    // 관리자가 추가한 커스텀 미션 불러오기 마법
     onValue(ref(db, 'settings/customMission'), (snap) => {
       const area = document.getElementById("customMissionArea");
       if(snap.exists() && snap.val() !== "") {
