@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>세이프 미 (Safe me) </title>
+  <title>세이프 미 (Safe me)</title>
   <style>
     body { text-align: center; background-color: #e6f7ff; font-family: sans-serif; padding-top: 10px; font-size: 20px; margin: 0; }
     #noticeBanner { background-color: #ff5252; color: white; padding: 15px; font-size: 22px; font-weight: bold; display: none; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); text-align: center; word-break: keep-all; }
@@ -12,6 +12,8 @@
     .qr-btn { background-color: #2196F3; } 
     .user-btn { background-color: #4CAF50; } 
     .msg-btn { background-color: #9c27b0; } 
+    /* ⭐ 임시 목록(투표) 버튼 스타일 ⭐ */
+    .vote-btn { background-color: #ff9800; display: none; } 
     .secret-gear { position: absolute; top: 15px; right: 15px; font-size: 30px; background: none; border: none; cursor: pointer; }
   </style>
 </head>
@@ -23,11 +25,15 @@
   
   <button class="btn qr-btn" onclick="location.href='qr.html'">📝 스마트 안전 미션</button>
   <button class="btn user-btn" onclick="location.href='user.html'">👷‍♂️ 내 상태 확인</button>
+  
+  <button id="voteBtn" class="btn vote-btn" onclick="location.href='vote.html'"></button>
+  
   <button class="btn msg-btn" onclick="location.href='message.html'">✉️ 1:1 건의함 (쪽지)</button>
 
   <script type="module">
     import { db, ref, onValue } from "./firebase-setup.js";
-    // 현수막 띄우기 마법
+    
+    // 현수막 마법
     onValue(ref(db, 'settings/banner'), (snap) => {
       const banner = document.getElementById("noticeBanner");
       if(snap.exists() && snap.val() !== "") {
@@ -35,6 +41,18 @@
         banner.style.display = "block";
       } else {
         banner.style.display = "none";
+      }
+    });
+
+    // ⭐ 투표(임시 목록) 활성화 마법 ⭐
+    onValue(ref(db, 'settings/voting'), (snap) => {
+      const voteData = snap.val();
+      const voteBtn = document.getElementById("voteBtn");
+      if(voteData && voteData.isActive) {
+        voteBtn.innerHTML = `🗳️ ${voteData.title}`; // 관리자가 정한 이름으로 바뀜
+        voteBtn.style.display = "block";
+      } else {
+        voteBtn.style.display = "none";
       }
     });
   </script>
