@@ -14,7 +14,6 @@
     button:hover { background-color: #f57c00; }
     h3 { color: #d84315; border-bottom: 2px solid #ffe0b2; padding-bottom: 5px; margin-top: 30px; font-size: 22px; }
     
-    /* ⭐ 탭 메뉴 스타일 ⭐ */
     .tab-menu { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px; }
     .tab-btn { flex: 1; padding: 10px; font-size: 16px; background-color: #ffe0b2; color: #e65100; border: 1px solid #ffb74d; border-radius: 5px; min-width: 100px; }
     .tab-btn.active { background-color: #ff9800; color: white; font-weight: bold; }
@@ -22,12 +21,10 @@
     .tab-content.active { display: block; animation: fadeIn 0.3s; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* 공통 리스트 스타일 */
     .list-item { font-size: 16px; padding: 15px; background-color: #fafafa; border-left: 5px solid #ff9800; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 5px 5px 0; }
     .btn-small { background-color: #4CAF50; padding: 8px 12px; font-size: 14px; width: auto; margin: 0 5px; }
     .btn-delete { background-color: #e53935; padding: 8px 12px; font-size: 14px; width: auto; }
     
-    /* 채팅 관련 */
     #allMsgArea { max-height: 250px; overflow-y: auto; border: 1px solid #ccc; background-color: #fffde7; padding: 10px; border-radius: 8px; margin-bottom: 20px; }
     #adminChatArea { height: 250px; overflow-y: auto; border: 1px solid #ccc; background-color: #f5f5f5; padding: 10px; border-radius: 8px; }
     .bubble { display: inline-block; padding: 8px 12px; border-radius: 10px; max-width: 80%; word-break: break-all; margin-top: 5px; }
@@ -66,7 +63,7 @@
     </div>
 
     <div id="tab3" class="tab-content">
-      <h3 style="margin-top:0;">📫 통합 수신 쪽지함 (직원들이 보낸 메시지)</h3>
+      <h3 style="margin-top:0;">📫 통합 수신 쪽지함</h3>
       <div id="allMsgArea">로딩 중...</div>
 
       <h3>✉️ 직원 선택하여 대화 및 답장하기</h3>
@@ -79,28 +76,31 @@
     </div>
 
     <div id="tab4" class="tab-content">
-      <h3 style="margin-top:0;">🔔 승인 대기 목록 (건당 30점)</h3>
+      <h3 style="margin-top:0;">🔔 승인 대기 목록</h3>
       <div id="requestArea" style="min-height: 50px; border: 1px solid #eee; padding: 10px;">로딩 중...</div>
 
-      <h3>📊 상세 통계 (미참여 인원 및 항목별 분석)</h3>
+      <h3>📊 상세 통계</h3>
       <select id="statUserSelect"><option value="ALL">전체 직원 합산 보기 (또는 개인 선택)</option></select>
       <div style="display:flex; gap:10px;">
         <select id="statTypeSelect" style="width: 50%;">
-          <option value="daily">일별 조회 (미참여 인원 확인)</option>
-          <option value="monthly">월별 조회 (누적)</option>
+          <option value="daily">일별 조회 (미참여 확인)</option>
+          <option value="monthly">월별 조회 (해당 달 누적)</option>
+          <option value="yearly">연별 전체 누적 (항목별 월별 추이)</option>
         </select>
         <input type="date" id="statDateInput" style="width: 50%;">
         <input type="month" id="statMonthInput" style="display: none; width: 50%;">
+        <input type="number" id="statYearInput" style="display: none; width: 50%;" min="2024" max="2050">
       </div>
       <button id="drawChartBtn" style="background-color: #1976D2; width: 100%; margin-top:10px;">그래프 조회하기</button>
       
       <div id="inactiveUsersArea" style="margin-top: 15px; padding: 10px; background-color: #ffebee; border-radius: 8px; display: none;"></div>
+      <div id="participationDaysArea" style="margin-top: 15px; padding: 10px; background-color: #e3f2fd; border-radius: 8px; display: none; font-size: 18px; font-weight: bold; color: #1565c0; text-align: center;"></div>
       
-      <div style="background: white; padding: 10px; border: 1px solid #ccc; border-radius: 10px; margin-top: 10px;">
-        <canvas id="myChart"></canvas>
+      <div id="chartAreaContainer" style="background: white; padding: 10px; border: 1px solid #ccc; border-radius: 10px; margin-top: 10px; max-height: 600px; overflow-y: auto;">
+        <p style="color:gray; text-align:center; padding: 20px;">조회하기를 눌러주세요.</p>
       </div>
 
-      <h3>📝 전체 직원 목록 및 원점수</h3>
+      <h3>📝 전체 직원 목록</h3>
       <div id="userListArea" style="max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px;"></div>
 
       <h3>➕ 새 직원 등록</h3>
@@ -112,23 +112,19 @@
 
     <div id="tab5" class="tab-content">
       <h3 style="margin-top:0;">🗳️ 임시 목록 지정 (투표함 만들기)</h3>
-      
       <div style="background-color:#f3e5f5; padding:15px; border-radius:10px; margin-bottom:15px;">
         <label><input type="checkbox" id="voteActiveCheck" style="width:auto; transform:scale(1.5); margin-right:10px;"><b>홈 화면에 탭 활성화 하기</b></label>
-        <input type="text" id="voteTitleInput" placeholder="탭 제목 입력 (예: 안전표어 공모전 투표함)">
-        
+        <input type="text" id="voteTitleInput" placeholder="탭 제목 입력 (예: 공모전 투표함)">
         <div style="display:flex; gap:10px; margin-top:10px;">
-          <input type="number" id="voteCountInput" placeholder="투표 항목 개수 (예: 20)">
-          <button id="genVoteInputsBtn" style="background-color:#ab47bc; width:120px; margin:0;">입력칸 생성</button>
+          <input type="number" id="voteCountInput" placeholder="투표 항목 개수">
+          <button id="genVoteInputsBtn" style="background-color:#ab47bc; width:120px; margin:0;">칸 생성</button>
         </div>
       </div>
-
       <div id="voteInputsArea" style="max-height:250px; overflow-y:auto; margin-bottom:15px;"></div>
-      
-      <button id="saveVoteBtn" style="background-color:#8e24aa; width:100%;">투표 설정 저장 및 배포하기</button>
+      <button id="saveVoteBtn" style="background-color:#8e24aa; width:100%;">투표 설정 저장/배포</button>
 
-      <h3>📊 현재 투표 현황 (관리자용)</h3>
-      <div id="voteResultArea" style="padding:10px; border:1px solid #ccc; border-radius:8px; background-color:#fff;">투표를 설정하면 결과가 보입니다.</div>
+      <h3>📊 현재 투표 현황</h3>
+      <div id="voteResultArea" style="padding:10px; border:1px solid #ccc; border-radius:8px; background-color:#fff;">결과 로딩...</div>
     </div>
 
     <div style="text-align: center; margin-top: 40px;">
@@ -139,7 +135,6 @@
   <script type="module">
     import { db, ref, set, get, push, onValue } from "./firebase-setup.js";
 
-    // ⭐ 탭 메뉴 전환 마법 ⭐
     window.showTab = (tabId, btn) => {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -147,14 +142,15 @@
       btn.classList.add('active');
     };
 
-    // 날짜 기본값 세팅
+    // 오늘, 이번 달, 올해 세팅
     const today = new Date();
     document.getElementById('statDateInput').value = today.toISOString().split('T')[0];
     document.getElementById('statMonthInput').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+    document.getElementById('statYearInput').value = today.getFullYear();
 
-    let allUsers = []; // 통계 미참여자 계산용
+    let allUsers = [];
 
-    // 1. 미션 & 현수막
+    // 공통 로직 (미션, 현수막, 직원, 승인, 쪽지, 투표) 그대로 유지
     onValue(ref(db, 'settings/customMission'), (snap) => {
       document.getElementById('customMissionInput').value = snap.exists() ? snap.val() : "";
     });
@@ -170,7 +166,6 @@
     };
     document.getElementById('bannerClearBtn').onclick = async () => { await set(ref(db, 'settings/banner'), null); };
 
-    // 2. 직원 관리 데이터
     onValue(ref(db, 'scores'), (snap) => {
       const msgSelect = document.getElementById('msgUserSelect');
       const statSelect = document.getElementById('statUserSelect');
@@ -179,7 +174,6 @@
       statSelect.innerHTML = '<option value="ALL">전체 합산 보기</option>';
       listArea.innerHTML = "";
       allUsers = [];
-
       if(snap.exists()) {
         const data = snap.val();
         for(let name in data) {
@@ -199,7 +193,6 @@
       if(confirm(`정말로 삭제하시겠습니까?`)) await set(ref(db, `scores/${name}`), null);
     };
 
-    // 3. 승인 대기
     onValue(ref(db, 'requests'), (snap) => {
       const area = document.getElementById('requestArea'); area.innerHTML = ""; const data = snap.val();
       if(!data) { area.innerHTML = "<div style='color:gray;'>대기 중인 요청이 없습니다.</div>"; return; }
@@ -217,33 +210,20 @@
     };
     window.rejectReq = async (key) => { await set(ref(db, `requests/${key}`), null); };
 
-    // ⭐ 4. 쪽지함 마법 (통합 조회 + 답장 연동) ⭐
     onValue(ref(db, 'messages'), (snap) => {
-      const allArea = document.getElementById('allMsgArea');
-      allArea.innerHTML = "";
+      const allArea = document.getElementById('allMsgArea'); allArea.innerHTML = "";
       if(!snap.exists()) { allArea.innerHTML = "수신된 쪽지가 없습니다."; return; }
-      
-      let msgList = [];
-      const usersData = snap.val();
+      let msgList = []; const usersData = snap.val();
       for(let user in usersData) {
         for(let pushId in usersData[user]) {
           const m = usersData[user][pushId];
-          if(m.sender === 'worker') { msgList.push({ user, pushId, ...m }); }
+          if(m.sender === 'worker') msgList.push({ user, pushId, ...m });
         }
       }
-      
-      // 최신순 정렬 (Push ID 역순)
       msgList.reverse();
-      if(msgList.length === 0) { allArea.innerHTML = "직원들이 보낸 쪽지가 없습니다."; return; }
-
+      if(msgList.length === 0) { allArea.innerHTML = "쪽지가 없습니다."; return; }
       msgList.forEach(m => {
-        allArea.innerHTML += `
-          <div style="border-bottom: 1px dashed #ccc; padding: 10px 0;">
-            <div style="font-size: 14px; color: #555;"><b>${m.user}</b> <span style="font-size:12px;color:gray;">(${m.time})</span></div>
-            <div style="font-size: 18px; margin: 5px 0;">${m.text}</div>
-            <button class="btn-small" style="background-color:#2196F3;" onclick="replyTo('${m.user}')">↪️ 답장하기</button>
-          </div>
-        `;
+        allArea.innerHTML += `<div style="border-bottom: 1px dashed #ccc; padding: 10px 0;"><div style="font-size: 14px; color: #555;"><b>${m.user}</b> <span style="font-size:12px;color:gray;">(${m.time})</span></div><div style="font-size: 18px; margin: 5px 0;">${m.text}</div><button class="btn-small" style="background-color:#2196F3;" onclick="replyTo('${m.user}')">↪️ 답장하기</button></div>`;
       });
     });
 
@@ -275,34 +255,23 @@
       }
     };
 
-    // ⭐ 5. 투표(임시 목록) 시스템 마법 ⭐
-    // 기존 설정 불러오기
     onValue(ref(db, 'settings/voting'), (snap) => {
       if(snap.exists()) {
         const v = snap.val();
         document.getElementById('voteActiveCheck').checked = v.isActive;
         document.getElementById('voteTitleInput').value = v.title;
-        // 결과 집계 (votes 데이터 필요)
         get(ref(db, 'votes')).then(voteSnap => {
           const resultArea = document.getElementById('voteResultArea');
           if(!voteSnap.exists()) { resultArea.innerHTML = "아직 투표한 사람이 없습니다."; return; }
           const votes = voteSnap.val();
-          let tally = {};
-          let total = 0;
-          v.options.forEach(opt => tally[opt] = 0); // 초기화
+          let tally = {}; let total = 0;
+          v.options.forEach(opt => tally[opt] = 0);
           for(let user in votes) { tally[votes[user].selected] = (tally[votes[user].selected] || 0) + 1; total++; }
-          
           let html = `<div style="font-weight:bold; margin-bottom:10px;">총 투표수: ${total}명</div>`;
           v.options.forEach(opt => {
             let count = tally[opt] || 0;
             let percent = total === 0 ? 0 : Math.round((count/total)*100);
-            html += `
-              <div style="margin-bottom:8px; text-align:left;">
-                <div>${opt} (${count}표, ${percent}%)</div>
-                <div style="background:#eee; height:15px; border-radius:10px; overflow:hidden;">
-                  <div style="background:#ff9800; width:${percent}%; height:100%;"></div>
-                </div>
-              </div>`;
+            html += `<div style="margin-bottom:8px; text-align:left;"><div>${opt} (${count}표, ${percent}%)</div><div style="background:#eee; height:15px; border-radius:10px; overflow:hidden;"><div style="background:#ff9800; width:${percent}%; height:100%;"></div></div></div>`;
           });
           resultArea.innerHTML = html;
         });
@@ -313,108 +282,171 @@
       const count = parseInt(document.getElementById('voteCountInput').value);
       if(!count || count < 1) return alert("1 이상의 숫자를 입력하세요.");
       let html = '';
-      for(let i=0; i<count; i++) {
-        html += `<input type="text" class="vote-item-input" placeholder="후보 항목 ${i+1}">`;
-      }
+      for(let i=0; i<count; i++) html += `<input type="text" class="vote-item-input" placeholder="후보 항목 ${i+1}">`;
       document.getElementById('voteInputsArea').innerHTML = html;
     };
-
     document.getElementById('saveVoteBtn').onclick = async () => {
       const isActive = document.getElementById('voteActiveCheck').checked;
       const title = document.getElementById('voteTitleInput').value.trim();
       const inputs = document.querySelectorAll('.vote-item-input');
-      let options = [];
-      inputs.forEach(inp => { if(inp.value.trim()) options.push(inp.value.trim()); });
-      
-      if(isActive && (!title || options.length === 0)) {
-        return alert("활성화하려면 제목과 하나 이상의 투표 항목이 필요합니다!");
-      }
-
-      await set(ref(db, 'settings/voting'), { isActive, title, options });
-      alert("투표 설정이 저장되어 홈 화면에 반영되었습니다!");
+      let options = []; inputs.forEach(inp => { if(inp.value.trim()) options.push(inp.value.trim()); });
+      if(isActive && (!title || options.length === 0)) return alert("활성화하려면 제목과 하나 이상의 항목이 필요합니다!");
+      await set(ref(db, 'settings/voting'), { isActive, title, options }); alert("설정 저장됨!");
     };
 
 
-    // ⭐ 6. 통계 차트 (미참여 인원 표시 + 가시성 향상) ⭐
-    let myChartInstance = null; let allHistory = [];
+    // ⭐ 차트 다중 렌더링을 위한 배열 관리 ⭐
+    let myChartInstances = []; 
+    let allHistory = [];
+    
     onValue(ref(db, 'history'), (snap) => {
       allHistory = []; if(snap.exists()) { const data = snap.val(); for(let key in data) allHistory.push(data[key]); }
     });
 
     document.getElementById('statTypeSelect').onchange = (e) => {
-      document.getElementById('statDateInput').style.display = e.target.value === 'daily' ? 'block' : 'none';
-      document.getElementById('statMonthInput').style.display = e.target.value === 'monthly' ? 'block' : 'none';
+      const type = e.target.value;
+      document.getElementById('statDateInput').style.display = type === 'daily' ? 'block' : 'none';
+      document.getElementById('statMonthInput').style.display = type === 'monthly' ? 'block' : 'none';
+      document.getElementById('statYearInput').style.display = type === 'yearly' ? 'block' : 'none';
     };
 
     document.getElementById('drawChartBtn').onclick = () => {
       const name = document.getElementById('statUserSelect').value;
       const type = document.getElementById('statTypeSelect').value;
       const inactiveArea = document.getElementById('inactiveUsersArea');
+      const daysArea = document.getElementById('participationDaysArea'); 
+      const chartContainer = document.getElementById('chartAreaContainer');
+      
+      // 기존 그려진 차트들 모두 삭제 및 초기화
+      myChartInstances.forEach(c => c.destroy());
+      myChartInstances = [];
+      chartContainer.innerHTML = "";
       
       let targetDateStr = "";
       if (type === 'daily') {
         targetDateStr = new Date(document.getElementById('statDateInput').value).toLocaleDateString('ko-KR'); 
-      } else {
+      } else if (type === 'monthly') {
         const [y, m] = document.getElementById('statMonthInput').value.split('-');
         targetDateStr = `${y}. ${parseInt(m)}.`; 
+      } else if (type === 'yearly') {
+        const yearVal = document.getElementById('statYearInput').value;
+        if(!yearVal) return alert("연도를 입력하세요!");
+        targetDateStr = `${yearVal}.`; 
       }
 
-      // ⭐ 미참여 인원 (0점) 확인 로직 (일별 조회 시에만) ⭐
+      // 일별 조회 시: 미참여 인원 표시
       if(type === 'daily') {
         const activeUsersThisDate = new Set(allHistory.filter(h => h.date === targetDateStr).map(h => h.name));
         const inactiveUsers = allUsers.filter(u => !activeUsersThisDate.has(u));
-        
-        inactiveArea.style.display = "block";
-        if(inactiveUsers.length > 0) {
-          inactiveArea.innerHTML = `<span style="color:#d32f2f; font-weight:bold;">🚨 미참여 인원 (0점):</span> ${inactiveUsers.join(', ')}`;
-        } else {
-          inactiveArea.innerHTML = `<span style="color:#388e3c; font-weight:bold;">✅ 전원 참여 완료! 훌륭합니다!</span>`;
-        }
+        inactiveArea.style.display = "block"; daysArea.style.display = "none";
+        if(inactiveUsers.length > 0) inactiveArea.innerHTML = `<span style="color:#d32f2f; font-weight:bold;">🚨 미참여 인원:</span> ${inactiveUsers.join(', ')}`;
+        else inactiveArea.innerHTML = `<span style="color:#388e3c; font-weight:bold;">✅ 전원 참여 완료!</span>`;
       } else {
         inactiveArea.style.display = "none";
       }
 
       const userHistory = allHistory.filter(h => {
          if(name !== "ALL" && h.name !== name) return false;
-         if(type === 'daily') return h.date === targetDateStr;
          return h.date.startsWith(targetDateStr); 
       });
 
-      const itemScores = { "TBM": 0, "보호구 착용": 0, "안전가이드 활동": 0, "작업 전 스트레칭": 0, "작업 전 1분 멈춤": 0, "아차사고": 0, "제안제출": 0 };
-      const customMission = document.getElementById('customMissionInput').value.trim();
-      if(customMission) itemScores[customMission] = 0;
-
-      let totalScore = 0;
-      userHistory.forEach(h => {
-        let baseMission = h.mission.split('(')[0]; 
-        if(itemScores[baseMission] === undefined) itemScores[baseMission] = 0; 
-        itemScores[baseMission] += h.point;
-        totalScore += h.point;
-      });
-
-      const labels = Object.keys(itemScores); labels.push("총 점수 합계");
-      const dataPoints = Object.values(itemScores); dataPoints.push(totalScore);
-      const bgColors = labels.map((l, idx) => idx === labels.length - 1 ? 'rgba(230, 81, 0, 0.8)' : 'rgba(33, 150, 243, 0.6)');
-
-      const ctx = document.getElementById('myChart').getContext('2d');
-      if (myChartInstance) myChartInstance.destroy(); 
-
-      myChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: { labels: labels, datasets: [{ label: '점수', data: dataPoints, backgroundColor: bgColors, borderWidth: 1 }] },
-        options: {
-          scales: { 
-            y: { 
-              beginAtZero: true, 
-              // ⭐ 시인성 확보: 값이 적어도 막대가 조금 올라오게 보이도록 여백 추가
-              suggestedMax: Math.max(...dataPoints) < 10 ? 10 : undefined 
-            } 
-          },
-          plugins: { legend: { display: false } },
-          // 막대 굵기 조절
-          barPercentage: 0.6
+      // 월별 또는 연별 참여 일수 계산
+      if(type === 'monthly' || type === 'yearly') {
+        const uniqueDays = new Set(userHistory.map(h => h.date));
+        daysArea.style.display = "block";
+        const periodText = type === 'monthly' ? "해당 달" : `${document.getElementById('statYearInput').value}년`;
+        if(name === "ALL") {
+          daysArea.innerHTML = `📅 ${periodText} 전체 안전활동 진행 일수: <b>${uniqueDays.size}일</b>`;
+        } else {
+          daysArea.innerHTML = `📅 ${name} 님의 ${periodText} 미션 참여 일수: <b style="color:#d32f2f;">${uniqueDays.size}일</b>`;
         }
-      });
+      }
+
+      const customMission = document.getElementById('customMissionInput').value.trim();
+
+      // ⭐ [일별/월별] 기존 1개의 통합 그래프 그리기 ⭐
+      if (type === 'daily' || type === 'monthly') {
+        const itemScores = { "TBM": 0, "보호구 착용": 0, "안전가이드 활동": 0, "작업 전 스트레칭": 0, "작업 전 1분 멈춤": 0, "아차사고": 0, "제안제출": 0 };
+        if(customMission) itemScores[customMission] = 0;
+
+        let totalScore = 0;
+        userHistory.forEach(h => {
+          let baseMission = h.mission.split('(')[0]; 
+          if(itemScores[baseMission] === undefined) itemScores[baseMission] = 0; 
+          itemScores[baseMission] += h.point;
+          totalScore += h.point;
+        });
+
+        const labels = Object.keys(itemScores); labels.push("총 점수 합계");
+        const dataPoints = Object.values(itemScores); dataPoints.push(totalScore);
+        const bgColors = labels.map((l, idx) => idx === labels.length - 1 ? 'rgba(230, 81, 0, 0.8)' : 'rgba(33, 150, 243, 0.6)');
+
+        chartContainer.innerHTML = '<canvas id="myChart"></canvas>';
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const chart = new Chart(ctx, {
+          type: 'bar',
+          data: { labels: labels, datasets: [{ label: '점수', data: dataPoints, backgroundColor: bgColors, borderWidth: 1 }] },
+          options: {
+            scales: { y: { beginAtZero: true, suggestedMax: Math.max(...dataPoints) < 10 ? 10 : undefined } },
+            plugins: { legend: { display: false } }, barPercentage: 0.6
+          }
+        });
+        myChartInstances.push(chart);
+      } 
+      // ⭐ [연별 누적] 9개 항목의 1~12월 개별 그래프 쫙 펼치기 ⭐
+      else if (type === 'yearly') {
+        let missions = ["TBM", "보호구 착용", "안전가이드 활동", "작업 전 스트레칭", "작업 전 1분 멈춤", "아차사고", "제안제출"];
+        if(customMission) missions.push(customMission);
+        missions.push("총 점수 합계");
+
+        // 1~12월 데이터 배열 세팅 [0,0,0...,0]
+        let yearlyData = {};
+        missions.forEach(m => yearlyData[m] = new Array(12).fill(0));
+
+        userHistory.forEach(h => {
+          let baseMission = h.mission.split('(')[0];
+          let monthIdx = parseInt(h.date.split('. ')[1]) - 1; // 1월 -> index 0
+          
+          if(yearlyData[baseMission] !== undefined) yearlyData[baseMission][monthIdx] += h.point;
+          yearlyData["총 점수 합계"][monthIdx] += h.point;
+        });
+
+        // 9개의 캔버스를 화면에 차례대로 추가
+        missions.forEach(m => {
+          const wrapper = document.createElement('div');
+          wrapper.style.marginBottom = '25px';
+          wrapper.style.paddingBottom = '15px';
+          wrapper.style.borderBottom = '2px dashed #ffcc80';
+          wrapper.innerHTML = `
+            <h4 style="margin:5px 0; color:#e65100; font-size:20px;">📊 ${m} (연간 추이)</h4>
+            <canvas style="max-height: 180px;"></canvas>
+          `;
+          chartContainer.appendChild(wrapper);
+          
+          const ctx = wrapper.querySelector('canvas').getContext('2d');
+          const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+              datasets: [{
+                label: '획득 점수',
+                data: yearlyData[m],
+                backgroundColor: m === '총 점수 합계' ? 'rgba(230, 81, 0, 0.7)' : 'rgba(33, 150, 243, 0.7)',
+                borderColor: m === '총 점수 합계' ? 'rgba(230, 81, 0, 1)' : 'rgba(33, 150, 243, 1)',
+                borderWidth: 1,
+                borderRadius: 4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: { y: { beginAtZero: true, suggestedMax: Math.max(...yearlyData[m]) < 10 ? 10 : undefined } },
+              plugins: { legend: { display: false } }
+            }
+          });
+          myChartInstances.push(chart);
+        });
+      }
     };
   </script>
 </body>
