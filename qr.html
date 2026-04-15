@@ -8,8 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
   <script type="text/javascript">
     (function() {
-      // 🚨 주의: 아래 쌍따옴표("")는 절대 지우지 말고 그 안에 암호만 넣으세요!
-      // 🔑 세 번째 열쇠(Public Key) (예: "AbCdEfG123456")
+      // 🚨 [수정할 곳 1] 세 번째 열쇠(Public Key)를 따옴표 안에 넣으세요! (예: "AbCdEfG123456")
       emailjs.init("Es5BOuiBwQHb-ZKeQ");
     })();
   </script>
@@ -17,7 +16,7 @@
     body { text-align: center; background-color: #f0f4c3; font-family: sans-serif; padding: 20px; font-size: 20px; }
     .box { background-color: white; padding: 25px; border-radius: 20px; display: inline-block; border: 3px solid #afb42b; width: 95%; max-width: 500px; }
     h2 { font-size: 30px; }
-    input[type=text], input[type=email] { padding: 15px; font-size: 22px; width: 90%; margin-bottom: 25px; text-align: center; border: 2px solid #ccc; border-radius: 10px; }
+    input[type=text] { padding: 15px; font-size: 22px; width: 90%; margin-bottom: 25px; text-align: center; border: 2px solid #ccc; border-radius: 10px; }
     .mission-group { background-color: #f9fbe7; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #e6ee9c; }
     .group-title { font-size: 22px; color: #827717; font-weight: bold; margin-bottom: 15px; text-align: left; }
     .mission-btn { padding: 20px; margin: 8px 0; font-size: 22px; font-weight: bold; color: white; border: none; border-radius: 12px; cursor: pointer; width: 100%; display: block; line-height: 1.4; }
@@ -30,6 +29,7 @@
     a.home-link { font-size: 20px; text-decoration: none; color: #555; font-weight: bold; display: inline-block; margin-top: 20px; padding: 15px; background-color: #eee; border-radius: 10px; width: 80%; }
     
     #photoTitle { width: 100%; box-sizing: border-box; text-align: left; font-size: 18px; padding: 15px; margin-bottom: 10px; border: 2px solid #90caf9; background-color: #fff; }
+    #photoPreview { width: 100%; max-width: 300px; margin: 15px auto; display: none; border: 3px solid #64b5f6; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
   </style>
 </head>
 <body>
@@ -49,10 +49,8 @@
 
     <div class="mission-group">
       <div class="group-title">👨‍💼 나의 제안 (관리자 승인)</div>
-      
       <p style="font-size: 15px; color: #555; margin-bottom: 5px;">👇 아래 <b>QR 이미지를 직접 터치</b>해서<br>내용을 제출한 뒤, 관리자에게 승인을 요청하세요!</p>
       <img src="제안QR.jpg" alt="제안 QR" class="qr-image" onclick="window.open('https://m.site.naver.com/1Y8hh', '_blank')">
-      
       <button class="mission-btn btn-admin" id="btn-system">아차사고 승인 요청</button>
       <button class="mission-btn btn-admin" id="btn-propose">제안제출 승인 요청</button>
 
@@ -68,10 +66,9 @@
       <input type="file" id="photoFile" accept="image/*" style="display: none;">
       <button class="mission-btn" style="background-color: #3f51b5; margin-top: 15px;" onclick="document.getElementById('photoFile').click()">📷 1. 사진 촬영 및 선택</button>
       
-      <img id="photoPreview" src="" alt="미리보기 이미지" style="width: 100%; max-width: 300px; margin: 15px auto; display: none; border: 3px solid #64b5f6; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+      <img id="photoPreview" src="" alt="미리보기 이미지">
 
       <button class="mission-btn" style="background-color: #f44336;" id="sendPhotoBtn">✉️ 2. 담당자에게 메일 발송</button>
-      
       <div id="uploadStatus" style="font-size: 16px; font-weight: bold; margin-top: 10px;"></div>
     </div>
 
@@ -86,13 +83,13 @@
         const status = document.getElementById('uploadStatus');
         const preview = document.getElementById('photoPreview');
         
-        status.innerText = "✅ 사진이 화면에 준비되었습니다! [메일 발송]을 누르세요.";
+        status.innerText = "✅ 사진 준비 완료! [메일 발송] 버튼을 누르세요.";
         status.style.color = "green";
 
         const reader = new FileReader();
         reader.onload = function(e) {
           preview.src = e.target.result;
-          preview.style.display = "block"; // 숨겨둔 액자 꺼내기
+          preview.style.display = "block";
         };
         reader.readAsDataURL(file);
       }
@@ -103,6 +100,7 @@
     import { db, ref, set, get, push, onValue, storage, sRef, uploadBytes, getDownloadURL } from "./firebase-setup.js";
     const resultDiv = document.getElementById("qrResult");
 
+    // 관리자 메일 불러오기
     let currentAdminEmail = "";
     onValue(ref(db, 'settings/adminEmail'), (snap) => {
       if(snap.exists() && snap.val()) {
@@ -173,12 +171,12 @@
       }
     }
 
-    // 📸 사진 전송 로직
+    // 📸 사진 전송 핵심 로직
     document.getElementById('sendPhotoBtn').onclick = async () => {
       const status = document.getElementById('uploadStatus');
       
-      // 누르자마자 무조건 글씨부터 바꾸기!
-      status.innerText = "🚀 발송 준비 중... (버튼 정상 작동 중!)";
+      // 버튼 클릭 즉시 반응
+      status.innerText = "🚀 발송 준비 중... (버튼 정상 작동!)";
       status.style.color = "blue";
 
       const name = document.getElementById("qrName").value.trim();
@@ -190,19 +188,19 @@
       if (!file) return Swal.fire('알림', '보낼 사진을 선택해주세요!', 'warning');
       
       if (!currentAdminEmail) {
-        status.innerText = "❌ 관리자 이메일 미설정 오류";
+        status.innerText = "❌ 관리자 이메일 설정 필요";
         status.style.color = "red";
         return Swal.fire('오류', '관리자 페이지(세이프 미)에서 수신 이메일을 먼저 설정해주세요!', 'error');
       }
 
-      status.innerText = "⏳ 사진 서버에 업로드 중... (10~20초 소요 가능)";
+      status.innerText = "⏳ 사진 서버에 저장 중... 잠시만 기다려주세요.";
       
       try {
         const storageRef = sRef(storage, `mission_photos/${name}_${Date.now()}`);
         await uploadBytes(storageRef, file);
         const photoUrl = await getDownloadURL(storageRef);
 
-        status.innerText = "📨 거의 다 되었습니다! 메일 날아가는 중...";
+        status.innerText = "📨 우체부 아저씨가 편지를 배달하는 중입니다...";
 
         const templateParams = {
           to_email: currentAdminEmail,
@@ -211,29 +209,27 @@
           photo_url: photoUrl
         };
 
-        // 🚨 주의: 아래 따옴표('')는 지우지 마세요!
-        // 🔑 두 번째 열쇠(Template ID) (예: 'template_abcd123')
+        // 🚨 [수정할 곳 2] 두 번째 열쇠(Template ID)를 따옴표 안에 넣으세요! (예: 'template_abcd123')
         emailjs.send('service_ersawkn', 'template_p068kva', templateParams)
           .then(() => {
             status.innerText = "✅ 전송 성공! (이메일 발송 완료)";
             status.style.color = "green";
             Swal.fire('전송 완료!', '담당자 메일로 사진이 성공적으로 발송되었습니다!', 'success');
             
-            // 초기화
             document.getElementById('photoFile').value = "";
             document.getElementById('photoTitle').value = "";
             document.getElementById('photoPreview').style.display = "none";
           }, (error) => {
-            status.innerText = "❌ 메일 발송 실패. (암호 오타 또는 설정 문제)";
+            // ⭐ 에러 발생 시 정확한 원인을 화면에 표시합니다.
+            status.innerText = "❌ 에러 원인: " + JSON.stringify(error);
             status.style.color = "red";
-            console.log(error);
-            Swal.fire('오류', '메일 발송에 실패했습니다.', 'error');
+            console.error("EmailJS Error:", error);
           });
 
       } catch (error) {
-        status.innerText = "❌ 사진 업로드 실패. (파이어베이스 에러)";
+        status.innerText = "❌ 사진 업로드 실패 (파이어베이스 에러)";
         status.style.color = "red";
-        console.error(error);
+        console.error("Firebase Error:", error);
         Swal.fire('오류', '사진 업로드에 실패했습니다.', 'error');
       }
     };
