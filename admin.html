@@ -13,18 +13,15 @@
     button { background-color: #ff9800; color: white; border: none; cursor: pointer; font-weight: bold; }
     button:hover { background-color: #f57c00; }
     h3 { color: #d84315; border-bottom: 2px solid #ffe0b2; padding-bottom: 5px; margin-top: 30px; font-size: 22px; }
-    
     .tab-menu { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px; }
     .tab-btn { flex: 1; padding: 10px; font-size: 16px; background-color: #ffe0b2; color: #e65100; border: 1px solid #ffb74d; border-radius: 5px; min-width: 100px; }
     .tab-btn.active { background-color: #ff9800; color: white; font-weight: bold; }
     .tab-content { display: none; }
     .tab-content.active { display: block; animation: fadeIn 0.3s; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
     .list-item { font-size: 16px; padding: 15px; background-color: #fafafa; border-left: 5px solid #ff9800; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 5px 5px 0; }
     .btn-small { background-color: #4CAF50; padding: 8px 12px; font-size: 14px; width: auto; margin: 0 5px; }
     .btn-delete { background-color: #e53935; padding: 8px 12px; font-size: 14px; width: auto; }
-    
     #allMsgArea { max-height: 250px; overflow-y: auto; border: 1px solid #ccc; background-color: #fffde7; padding: 10px; border-radius: 8px; margin-bottom: 20px; }
     #adminChatArea { height: 250px; overflow-y: auto; border: 1px solid #ccc; background-color: #f5f5f5; padding: 10px; border-radius: 8px; }
     .bubble { display: inline-block; padding: 8px 12px; border-radius: 10px; max-width: 80%; word-break: break-all; margin-top: 5px; }
@@ -37,7 +34,7 @@
     <h2>👨‍💼 관리자 모드</h2>
 
     <div class="tab-menu">
-      <button class="tab-btn active" onclick="showTab('tab1', this)">추가 미션</button>
+      <button class="tab-btn active" onclick="showTab('tab1', this)">기본 설정</button>
       <button class="tab-btn" onclick="showTab('tab2', this)">전체 공지</button>
       <button class="tab-btn" onclick="showTab('tab3', this)">쪽지함</button>
       <button class="tab-btn" onclick="showTab('tab4', this)">직원 관리</button>
@@ -50,6 +47,13 @@
         <input type="text" id="customMissionInput" placeholder="예: 작업장 정리정돈">
         <button id="customMissionBtn" style="background-color:#8e24aa; width:100px;">적용</button>
         <button id="customMissionDelBtn" style="background-color:#757575; width:100px;">삭제</button>
+      </div>
+
+      <h3>📧 담당자(수신) 이메일 설정</h3>
+      <p style="font-size:14px; color:gray; margin-top:0;">현장 사진 및 제안이 전송될 이메일 주소를 입력하세요.</p>
+      <div style="display:flex; gap:10px;">
+        <input type="email" id="adminEmailInput" placeholder="예: manager@company.com">
+        <button id="adminEmailBtn" style="background-color:#1976D2; width:100px;">저장</button>
       </div>
     </div>
 
@@ -147,7 +151,6 @@
       btn.classList.add('active');
     };
 
-    // 오늘, 이번 달, 올해 세팅
     const today = new Date();
     document.getElementById('statDateInput').value = today.toISOString().split('T')[0];
     document.getElementById('statMonthInput').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
@@ -155,7 +158,19 @@
 
     let allUsers = [];
 
-    // 공통 로직 (미션, 현수막, 직원, 승인, 쪽지, 투표)
+    // ⭐ 담당자 이메일 불러오기 및 저장 기능 ⭐
+    onValue(ref(db, 'settings/adminEmail'), (snap) => {
+      document.getElementById('adminEmailInput').value = snap.exists() ? snap.val() : "";
+    });
+    
+    document.getElementById('adminEmailBtn').onclick = async () => {
+      const email = document.getElementById('adminEmailInput').value.trim();
+      if(!email) return alert("이메일 주소를 입력해주세요!");
+      await set(ref(db, 'settings/adminEmail'), email);
+      alert("수신 이메일이 저장되었습니다!");
+    };
+
+    // 추가 미션 설정
     onValue(ref(db, 'settings/customMission'), (snap) => {
       document.getElementById('customMissionInput').value = snap.exists() ? snap.val() : "";
     });
@@ -165,12 +180,14 @@
     };
     document.getElementById('customMissionDelBtn').onclick = async () => { await set(ref(db, 'settings/customMission'), null); alert("삭제 완료!"); };
 
+    // 전체 공지
     document.getElementById('bannerBtn').onclick = async () => {
       const text = document.getElementById('bannerText').value.trim();
       if(text) { await set(ref(db, 'settings/banner'), text); alert("게시 완료!"); document.getElementById('bannerText').value=""; }
     };
     document.getElementById('bannerClearBtn').onclick = async () => { await set(ref(db, 'settings/banner'), null); };
 
+    // 직원 관리
     onValue(ref(db, 'scores'), (snap) => {
       const msgSelect = document.getElementById('msgUserSelect');
       const statSelect = document.getElementById('statUserSelect');
@@ -198,6 +215,7 @@
       if(confirm(`정말로 삭제하시겠습니까?`)) await set(ref(db, `scores/${name}`), null);
     };
 
+    // 승인 대기
     onValue(ref(db, 'requests'), (snap) => {
       const area = document.getElementById('requestArea'); area.innerHTML = ""; const data = snap.val();
       if(!data) { area.innerHTML = "<div style='color:gray;'>대기 중인 요청이 없습니다.</div>"; return; }
@@ -215,6 +233,7 @@
     };
     window.rejectReq = async (key) => { await set(ref(db, `requests/${key}`), null); };
 
+    // 쪽지함
     onValue(ref(db, 'messages'), (snap) => {
       const allArea = document.getElementById('allMsgArea'); allArea.innerHTML = "";
       if(!snap.exists()) { allArea.innerHTML = "수신된 쪽지가 없습니다."; return; }
@@ -260,7 +279,7 @@
       }
     };
 
-    // ⭐ 투표 현황 렌더링 ⭐
+    // 투표
     onValue(ref(db, 'settings/voting'), (snap) => {
       if(snap.exists()) {
         const v = snap.val();
@@ -301,47 +320,28 @@
       await set(ref(db, 'settings/voting'), { isActive, title, options }); alert("설정 저장됨!");
     };
 
-    // ⭐ 투표 결과 엑셀 다운로드 함수 ⭐
     window.downloadVoteExcel = async () => {
       const voteSnap = await get(ref(db, 'votes'));
       if (!voteSnap.exists()) return alert("아직 투표 데이터가 없습니다.");
-
       const votes = voteSnap.val();
-      let csvContent = "\uFEFF"; // 한글 깨짐 방지용 BOM
-      csvContent += "이름,선택항목,투표시간\n";
-
-      for (let name in votes) {
-        const row = [
-          name,
-          `"${votes[name].selected}"`, // 항목에 쉼표가 있을 경우를 대비하여 큰따옴표 처리
-          votes[name].time
-        ];
-        csvContent += row.join(",") + "\n";
-      }
-
+      let csvContent = "\uFEFF이름,선택항목,투표시간\n";
+      for (let name in votes) csvContent += `${name},"${votes[name].selected}",${votes[name].time}\n`;
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.setAttribute("href", url);
+      link.setAttribute("href", URL.createObjectURL(blob));
       link.setAttribute("download", `투표결과_${new Date().toLocaleDateString()}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
     };
 
-    // ⭐ 투표 기록 초기화 함수 ⭐
     window.resetVotes = async () => {
-      if(confirm("⚠️ 정말로 모든 투표 결과를 삭제하시겠습니까?\n(이 작업은 되돌릴 수 없으며, 기존 투표 기록이 모두 사라집니다!)")) {
+      if(confirm("⚠️ 정말로 모든 투표 결과를 삭제하시겠습니까?")) {
         await set(ref(db, 'votes'), null);
-        alert("투표 결과가 깔끔하게 초기화되었습니다.");
+        alert("투표 결과가 초기화되었습니다.");
       }
     };
 
-
-    // 차트 관련 변수들
-    let myChartInstances = []; 
-    let allHistory = [];
-    
+    // 차트
+    let myChartInstances = []; let allHistory = [];
     onValue(ref(db, 'history'), (snap) => {
       allHistory = []; if(snap.exists()) { const data = snap.val(); for(let key in data) allHistory.push(data[key]); }
     });
@@ -361,20 +361,12 @@
       const chartContainer = document.getElementById('chartAreaContainer');
       
       myChartInstances.forEach(c => c.destroy());
-      myChartInstances = [];
-      chartContainer.innerHTML = "";
+      myChartInstances = []; chartContainer.innerHTML = "";
       
       let targetDateStr = "";
-      if (type === 'daily') {
-        targetDateStr = new Date(document.getElementById('statDateInput').value).toLocaleDateString('ko-KR'); 
-      } else if (type === 'monthly') {
-        const [y, m] = document.getElementById('statMonthInput').value.split('-');
-        targetDateStr = `${y}. ${parseInt(m)}.`; 
-      } else if (type === 'yearly') {
-        const yearVal = document.getElementById('statYearInput').value;
-        if(!yearVal) return alert("연도를 입력하세요!");
-        targetDateStr = `${yearVal}.`; 
-      }
+      if (type === 'daily') targetDateStr = new Date(document.getElementById('statDateInput').value).toLocaleDateString('ko-KR'); 
+      else if (type === 'monthly') { const [y, m] = document.getElementById('statMonthInput').value.split('-'); targetDateStr = `${y}. ${parseInt(m)}.`; }
+      else if (type === 'yearly') { const yearVal = document.getElementById('statYearInput').value; if(!yearVal) return alert("연도를 입력하세요!"); targetDateStr = `${yearVal}.`; }
 
       if(type === 'daily') {
         const activeUsersThisDate = new Set(allHistory.filter(h => h.date === targetDateStr).map(h => h.name));
@@ -382,24 +374,16 @@
         inactiveArea.style.display = "block"; daysArea.style.display = "none";
         if(inactiveUsers.length > 0) inactiveArea.innerHTML = `<span style="color:#d32f2f; font-weight:bold;">🚨 미참여 인원:</span> ${inactiveUsers.join(', ')}`;
         else inactiveArea.innerHTML = `<span style="color:#388e3c; font-weight:bold;">✅ 전원 참여 완료!</span>`;
-      } else {
-        inactiveArea.style.display = "none";
-      }
+      } else inactiveArea.style.display = "none";
 
-      const userHistory = allHistory.filter(h => {
-         if(name !== "ALL" && h.name !== name) return false;
-         return h.date.startsWith(targetDateStr); 
-      });
+      const userHistory = allHistory.filter(h => { if(name !== "ALL" && h.name !== name) return false; return h.date.startsWith(targetDateStr); });
 
       if(type === 'monthly' || type === 'yearly') {
         const uniqueDays = new Set(userHistory.map(h => h.date));
         daysArea.style.display = "block";
         const periodText = type === 'monthly' ? "해당 달" : `${document.getElementById('statYearInput').value}년`;
-        if(name === "ALL") {
-          daysArea.innerHTML = `📅 ${periodText} 전체 안전활동 진행 일수: <b>${uniqueDays.size}일</b>`;
-        } else {
-          daysArea.innerHTML = `📅 ${name} 님의 ${periodText} 미션 참여 일수: <b style="color:#d32f2f;">${uniqueDays.size}일</b>`;
-        }
+        if(name === "ALL") daysArea.innerHTML = `📅 ${periodText} 전체 안전활동 진행 일수: <b>${uniqueDays.size}일</b>`;
+        else daysArea.innerHTML = `📅 ${name} 님의 ${periodText} 미션 참여 일수: <b style="color:#d32f2f;">${uniqueDays.size}일</b>`;
       }
 
       const customMission = document.getElementById('customMissionInput').value.trim();
@@ -407,13 +391,11 @@
       if (type === 'daily' || type === 'monthly') {
         const itemScores = { "TBM": 0, "보호구 착용": 0, "안전가이드 활동": 0, "작업 전 스트레칭": 0, "작업 전 1분 멈춤": 0, "아차사고": 0, "제안제출": 0 };
         if(customMission) itemScores[customMission] = 0;
-
         let totalScore = 0;
         userHistory.forEach(h => {
           let baseMission = h.mission.split('(')[0]; 
           if(itemScores[baseMission] === undefined) itemScores[baseMission] = 0; 
-          itemScores[baseMission] += h.point;
-          totalScore += h.point;
+          itemScores[baseMission] += h.point; totalScore += h.point;
         });
 
         const labels = Object.keys(itemScores); labels.push("총 점수 합계");
@@ -422,20 +404,14 @@
 
         chartContainer.innerHTML = '<canvas id="myChart"></canvas>';
         const ctx = document.getElementById('myChart').getContext('2d');
-        const chart = new Chart(ctx, {
+        myChartInstances.push(new Chart(ctx, {
           type: 'bar',
           data: { labels: labels, datasets: [{ label: '점수', data: dataPoints, backgroundColor: bgColors, borderWidth: 1 }] },
-          options: {
-            scales: { y: { beginAtZero: true, suggestedMax: Math.max(...dataPoints) < 10 ? 10 : undefined } },
-            plugins: { legend: { display: false } }, barPercentage: 0.6
-          }
-        });
-        myChartInstances.push(chart);
-      } 
-      else if (type === 'yearly') {
+          options: { scales: { y: { beginAtZero: true, suggestedMax: Math.max(...dataPoints) < 10 ? 10 : undefined } }, plugins: { legend: { display: false } }, barPercentage: 0.6 }
+        }));
+      } else if (type === 'yearly') {
         let missions = ["TBM", "보호구 착용", "안전가이드 활동", "작업 전 스트레칭", "작업 전 1분 멈춤", "아차사고", "제안제출"];
-        if(customMission) missions.push(customMission);
-        missions.push("총 점수 합계");
+        if(customMission) missions.push(customMission); missions.push("총 점수 합계");
 
         let yearlyData = {};
         missions.forEach(m => yearlyData[m] = new Array(12).fill(0));
@@ -449,31 +425,23 @@
 
         missions.forEach(m => {
           const wrapper = document.createElement('div');
-          wrapper.style.marginBottom = '25px';
-          wrapper.style.paddingBottom = '15px';
-          wrapper.style.borderBottom = '2px dashed #ffcc80';
+          wrapper.style.marginBottom = '25px'; wrapper.style.paddingBottom = '15px'; wrapper.style.borderBottom = '2px dashed #ffcc80';
           wrapper.innerHTML = `<h4 style="margin:5px 0; color:#e65100; font-size:20px;">📊 ${m} (연간 추이)</h4><canvas style="max-height: 180px;"></canvas>`;
           chartContainer.appendChild(wrapper);
           
           const ctx = wrapper.querySelector('canvas').getContext('2d');
-          const chart = new Chart(ctx, {
+          myChartInstances.push(new Chart(ctx, {
             type: 'bar',
             data: {
               labels: ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
               datasets: [{
                 label: '획득 점수', data: yearlyData[m],
                 backgroundColor: m === '총 점수 합계' ? 'rgba(230, 81, 0, 0.7)' : 'rgba(33, 150, 243, 0.7)',
-                borderColor: m === '총 점수 합계' ? 'rgba(230, 81, 0, 1)' : 'rgba(33, 150, 243, 1)',
-                borderWidth: 1, borderRadius: 4
+                borderColor: m === '총 점수 합계' ? 'rgba(230, 81, 0, 1)' : 'rgba(33, 150, 243, 1)', borderWidth: 1, borderRadius: 4
               }]
             },
-            options: {
-              responsive: true, maintainAspectRatio: false,
-              scales: { y: { beginAtZero: true, suggestedMax: Math.max(...yearlyData[m]) < 10 ? 10 : undefined } },
-              plugins: { legend: { display: false } }
-            }
-          });
-          myChartInstances.push(chart);
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, suggestedMax: Math.max(...yearlyData[m]) < 10 ? 10 : undefined } }, plugins: { legend: { display: false } } }
+          }));
         });
       }
     };
