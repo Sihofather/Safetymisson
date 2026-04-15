@@ -5,13 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>일일 안전 미션 확인</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-  <script type="text/javascript">
-    (function() {
-      // 🚨 [수정할 곳 1] 세 번째 열쇠(Public Key)를 따옴표 안에 넣으세요! (예: "AbCdEfG123456")
-      emailjs.init("Es5BOuiBwQHb-ZKeQ");
-    })();
-  </script>
+
   <style>
     body { text-align: center; background-color: #f0f4c3; font-family: sans-serif; padding: 20px; font-size: 20px; }
     .box { background-color: white; padding: 25px; border-radius: 20px; display: inline-block; border: 3px solid #afb42b; width: 95%; max-width: 500px; }
@@ -171,12 +165,12 @@
       }
     }
 
-    // 📸 사진 전송 핵심 로직
+    // 📸 사진 전송 핵심 로직 (Firebase Cloud Function 방식)
     document.getElementById('sendPhotoBtn').onclick = async () => {
       const status = document.getElementById('uploadStatus');
       
       // 버튼 클릭 즉시 반응
-      status.innerText = "🚀 발송 준비 중... (버튼 정상 작동!)";
+      status.innerText = "🚀 발송 준비 중...";
       status.style.color = "blue";
 
       const name = document.getElementById("qrName").value.trim();
@@ -196,41 +190,36 @@
       status.innerText = "⏳ 사진 서버에 저장 중... 잠시만 기다려주세요.";
       
       try {
+        // 1단계: 사진을 Firebase Storage에 업로드 (기존과 동일)
         const storageRef = sRef(storage, `mission_photos/${name}_${Date.now()}`);
         await uploadBytes(storageRef, file);
         const photoUrl = await getDownloadURL(storageRef);
 
-        status.innerText = "📨 우체부 아저씨가 편지를 배달하는 중입니다...";
+        status.innerText = "📨 메일 발송 요청 중...";
 
-        const templateParams = {
-          to_email: currentAdminEmail,
+        // 2단계: mailQueue에 기록 → Cloud Function이 자동 감지하여 메일 발송
+        await set(push(ref(db, 'mailQueue')), {
+          to: currentAdminEmail,
           name: name,
-          title: title, 
-          photo_url: photoUrl
-        };
+          title: title,
+          photoUrl: photoUrl,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        });
 
-        // 🚨 [수정할 곳 2] 두 번째 열쇠(Template ID)를 따옴표 안에 넣으세요! (예: 'template_abcd123')
-        emailjs.send('service_6ts8ztv', 'template_p068kva', templateParams)
-          .then(() => {
-            status.innerText = "✅ 전송 성공! (이메일 발송 완료)";
-            status.style.color = "green";
-            Swal.fire('전송 완료!', '담당자 메일로 사진이 성공적으로 발송되었습니다!', 'success');
-            
-            document.getElementById('photoFile').value = "";
-            document.getElementById('photoTitle').value = "";
-            document.getElementById('photoPreview').style.display = "none";
-          }, (error) => {
-            // ⭐ 에러 발생 시 정확한 원인을 화면에 표시합니다.
-            status.innerText = "❌ 에러 원인: " + JSON.stringify(error);
-            status.style.color = "red";
-            console.error("EmailJS Error:", error);
-          });
+        status.innerText = "✅ 전송 성공! (메일 발송 완료)";
+        status.style.color = "green";
+        Swal.fire('전송 완료!', '담당자 메일로 사진이 성공적으로 발송되었습니다!', 'success');
+        
+        document.getElementById('photoFile').value = "";
+        document.getElementById('photoTitle').value = "";
+        document.getElementById('photoPreview').style.display = "none";
 
       } catch (error) {
-        status.innerText = "❌ 사진 업로드 실패 (파이어베이스 에러)";
+        status.innerText = "❌ 전송 실패: " + error.message;
         status.style.color = "red";
-        console.error("Firebase Error:", error);
-        Swal.fire('오류', '사진 업로드에 실패했습니다.', 'error');
+        console.error("Error:", error);
+        Swal.fire('오류', '전송에 실패했습니다. 다시 시도해주세요.', 'error');
       }
     };
 
