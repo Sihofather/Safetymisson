@@ -3,6 +3,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getDatabase, ref, set, get, update, push, child, onValue } 
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+// ⭐ 사진 창고(Storage) 도구 추가! (이게 없으면 사진 버튼이 기절합니다)
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
 const firebaseConfig = {
     apiKey: "AIzaSyA8LeUcSM4h9YVt-1jwnX_lXFhBWmUHCEg",
     authDomain: "safety-mission-109f5.firebaseapp.com",
@@ -16,6 +20,7 @@ const firebaseConfig = {
 // 마법 칠판 시작!
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const storage = getStorage(app); // ⭐ 창고 연결
 
-// 다른 파일에서 쓸 수 있게 내보내기
-export { db, ref, set, get, update, push, child, onValue };
+// ⭐ 다른 파일에서 쓸 수 있게 내보내기 (storage 관련 도구들 추가됨!)
+export { db, ref, set, get, update, push, child, onValue, storage, sRef, uploadBytes, getDownloadURL };
