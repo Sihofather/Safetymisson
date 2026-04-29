@@ -106,6 +106,10 @@
       </div>
 
       <h3>📝 전체 직원 목록</h3>
+      <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <button onclick="downloadUserSummaryExcel()" style="background-color:#4CAF50; margin:0; flex:1; border-radius:8px;">📊 직원 요약 (점수/일수)</button>
+        <button onclick="downloadHistoryExcel()" style="background-color:#1976D2; margin:0; flex:1; border-radius:8px;">📋 활동 이력 전체</button>
+      </div>
       <div id="userListArea" style="max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px;"></div>
 
       <h3>➕ 새 직원 등록</h3>
@@ -364,6 +368,50 @@
       let options = []; inputs.forEach(inp => { if(inp.value.trim()) options.push(inp.value.trim()); });
       if(isActive && (!title || options.length === 0)) return alert("활성화하려면 제목과 하나 이상의 항목이 필요합니다!");
       await set(ref(db, 'settings/voting'), { isActive, title, options }); alert("설정 저장됨!");
+    };
+
+    function csvCell(v) {
+      const s = v == null ? '' : String(v);
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+
+    function saveCsv(content, filename) {
+      const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.setAttribute("href", URL.createObjectURL(blob));
+      link.setAttribute("download", filename);
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    }
+
+    window.downloadUserSummaryExcel = async () => {
+      if (!scoresCache || Object.keys(scoresCache).length === 0) return alert("등록된 직원이 없습니다.");
+      const userDays = {};
+      allHistory.forEach(h => {
+        if (!h || !h.name || !h.date) return;
+        if (!userDays[h.name]) userDays[h.name] = new Set();
+        userDays[h.name].add(h.date);
+      });
+      const rows = Object.keys(scoresCache)
+        .map(name => ({ name, score: scoresCache[name] || 0, days: userDays[name] ? userDays[name].size : 0 }))
+        .sort((a, b) => b.score - a.score);
+      let csv = "﻿순위,이름,누적점수,누적활동일수\n";
+      rows.forEach((r, i) => {
+        csv += `${i + 1},${csvCell(r.name)},${r.score},${r.days}\n`;
+      });
+      saveCsv(csv, `직원요약_${new Date().toLocaleDateString('ko-KR')}.csv`);
+    };
+
+    window.downloadHistoryExcel = async () => {
+      if (!allHistory || allHistory.length === 0) return alert("활동 이력이 없습니다.");
+      const sorted = allHistory
+        .filter(h => h && h.date)
+        .slice()
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      let csv = "﻿날짜,이름,미션,점수\n";
+      sorted.forEach(h => {
+        csv += `${csvCell(h.date)},${csvCell(h.name)},${csvCell(h.mission)},${h.point != null ? h.point : ''}\n`;
+      });
+      saveCsv(csv, `활동이력_${new Date().toLocaleDateString('ko-KR')}.csv`);
     };
 
     window.downloadVoteExcel = async () => {
