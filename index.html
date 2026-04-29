@@ -30,6 +30,8 @@
   
   <button class="btn msg-btn" onclick="location.href='message.html'">✉️ 1:1 건의함 (쪽지)</button>
 
+  <section id="suggestionBoard" style="display:none; margin-top:30px; padding-bottom:30px;"></section>
+
   <script type="module">
     import { db, ref, onValue } from "./firebase-setup.js";
     
@@ -55,6 +57,122 @@
         voteBtn.style.display = "none";
       }
     });
+
+    // 💡 제안 현황판
+    let suggestionBoardActive = false;
+    let suggestionsData = null;
+
+    onValue(ref(db, 'settings/suggestionBoard/isActive'), (snap) => {
+      suggestionBoardActive = snap.exists() && snap.val() === true;
+      renderSuggestionBoard();
+    });
+
+    onValue(ref(db, 'suggestions'), (snap) => {
+      suggestionsData = snap.exists() ? snap.val() : null;
+      renderSuggestionBoard();
+    });
+
+    function renderSuggestionBoard() {
+      const board = document.getElementById('suggestionBoard');
+      board.innerHTML = '';
+
+      if (!suggestionBoardActive || !suggestionsData) {
+        board.style.display = 'none';
+        return;
+      }
+
+      const items = Object.entries(suggestionsData)
+        .sort((a, b) => (b[1].time || 0) - (a[1].time || 0))
+        .slice(0, 20);
+
+      if (items.length === 0) {
+        board.style.display = 'none';
+        return;
+      }
+
+      board.style.display = 'block';
+
+      const title = document.createElement('h2');
+      title.textContent = '💡 우리의 개선 제안';
+      title.style.cssText = 'color:#333; margin:20px 0 10px; font-size:26px;';
+      board.appendChild(title);
+
+      items.forEach(([key, s]) => {
+        const card = document.createElement('div');
+        card.style.cssText = 'background:white; border-radius:15px; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:20px; margin:15px auto; width:90%; max-width:450px; text-align:left;';
+
+        const dateEl = document.createElement('div');
+        dateEl.style.cssText = 'font-size:13px; color:gray; margin-bottom:8px;';
+        dateEl.textContent = s.date || '';
+        card.appendChild(dateEl);
+
+        const contentEl = document.createElement('div');
+        contentEl.style.cssText = 'white-space:pre-wrap; font-size:17px; margin-bottom:12px; color:#333;';
+        contentEl.textContent = s.content || '';
+        card.appendChild(contentEl);
+
+        if (s.beforeThumb || s.afterThumb || s.beforeText || s.afterText) {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:stretch;';
+
+          const buildThumb = (label, thumb, full, text, altText) => {
+            if (!thumb && !text) return null;
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'flex:1; min-width:120px; max-width:220px; text-align:center; display:flex; flex-direction:column; gap:6px;';
+            const lbl = document.createElement('div');
+            lbl.style.cssText = 'font-size:14px; font-weight:bold; color:#555;';
+            lbl.textContent = label;
+            wrap.appendChild(lbl);
+            if (thumb) {
+              const img = document.createElement('img');
+              img.src = thumb;
+              img.loading = 'lazy';
+              img.alt = altText;
+              img.style.cssText = 'width:100%; max-width:200px; border-radius:8px; cursor:pointer; border:1px solid #eee; align-self:center;';
+              img.addEventListener('click', () => openImageModal(full || thumb, altText));
+              wrap.appendChild(img);
+            }
+            if (text) {
+              const t = document.createElement('div');
+              t.style.cssText = 'white-space:pre-wrap; font-size:14px; color:#333; background:#f5f5f5; padding:8px 10px; border-radius:8px; text-align:left; word-break:break-word; line-height:1.4;';
+              t.textContent = text;
+              wrap.appendChild(t);
+            }
+            return wrap;
+          };
+
+          const b = buildThumb('개선 전', s.beforeThumb, s.beforeFull, s.beforeText, '개선 전 사진');
+          const a = buildThumb('개선 후', s.afterThumb, s.afterFull, s.afterText, '개선 후 사진');
+          if (b) row.appendChild(b);
+          if (b && a) {
+            const arrow = document.createElement('div');
+            arrow.textContent = '➡️';
+            arrow.setAttribute('aria-hidden', 'true');
+            arrow.style.cssText = 'flex:0 0 auto; font-size:32px; color:#ff7043; align-self:center; padding:0 4px;';
+            row.appendChild(arrow);
+          }
+          if (a) row.appendChild(a);
+          card.appendChild(row);
+        }
+
+        board.appendChild(card);
+      });
+    }
+
+    function openImageModal(src, altText) {
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:9999; padding:20px; cursor:pointer;';
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = altText;
+      img.style.cssText = 'max-width:100%; max-height:100%; border-radius:8px;';
+      modal.appendChild(img);
+      const close = () => { modal.remove(); document.removeEventListener('keydown', escHandler); };
+      const escHandler = (e) => { if (e.key === 'Escape') close(); };
+      modal.addEventListener('click', close);
+      document.addEventListener('keydown', escHandler);
+      document.body.appendChild(modal);
+    }
   </script>
 </body>
 </html>
