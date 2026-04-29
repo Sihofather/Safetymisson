@@ -23,7 +23,15 @@
     a.home-link { font-size: 20px; text-decoration: none; color: #555; font-weight: bold; display: inline-block; margin-top: 20px; padding: 15px; background-color: #eee; border-radius: 10px; width: 80%; }
     
     #photoTitle { width: 100%; box-sizing: border-box; text-align: left; font-size: 18px; padding: 15px; margin-bottom: 10px; border: 2px solid #90caf9; background-color: #fff; }
-    #photoPreview { width: 100%; max-width: 300px; margin: 15px auto; display: none; border: 3px solid #64b5f6; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+    #photoPreview { display: none; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 15px auto; max-width: 100%; }
+    #photoPreview .thumb-wrap { position: relative; }
+    #photoPreview img { width: 90px; height: 90px; object-fit: cover; border: 2px solid #64b5f6; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+    #photoPreview .thumb-remove { position: absolute; top: -6px; right: -6px; background: #f44336; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 14px; line-height: 1; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+
+    .swal2-radio { flex-direction: column !important; align-items: stretch !important; gap: 10px; }
+    .swal2-radio label { display: flex !important; align-items: center; justify-content: flex-start; margin: 0 !important; padding: 14px 16px; font-size: 20px !important; border: 2px solid #e0e0e0; border-radius: 10px; background-color: #fafafa; cursor: pointer; }
+    .swal2-radio label:hover { background-color: #fff3e0; border-color: #ff7043; }
+    .swal2-radio input[type=radio] { transform: scale(1.4); margin-right: 12px !important; }
   </style>
 </head>
 <body>
@@ -57,10 +65,10 @@
       <p style="font-size: 14px; color: #555; margin-bottom: 10px; text-align: left;">제안/아차사고와 관련된 현장 사진을 메일로 보냅니다.</p>
       <input type="text" id="photoTitle" placeholder="제안/보고 제목을 입력하세요">
       
-      <input type="file" id="photoFile" accept="image/*" style="display: none;">
-      <button class="mission-btn" style="background-color: #3f51b5; margin-top: 15px;" onclick="document.getElementById('photoFile').click()">📷 1. 사진 촬영 및 선택</button>
-      
-      <img id="photoPreview" src="" alt="미리보기 이미지">
+      <input type="file" id="photoFile" accept="image/*" multiple style="display: none;">
+      <button class="mission-btn" style="background-color: #3f51b5; margin-top: 15px;" onclick="document.getElementById('photoFile').click()">📷 1. 사진 촬영 및 선택 (여러 장 가능)</button>
+
+      <div id="photoPreview" aria-label="첨부된 사진 미리보기"></div>
 
       <button class="mission-btn" style="background-color: #f44336;" id="sendPhotoBtn">✉️ 2. 담당자에게 메일 발송</button>
       <div id="uploadStatus" style="font-size: 16px; font-weight: bold; margin-top: 10px;"></div>
@@ -71,28 +79,110 @@
   </div>
 
   <script>
-    document.getElementById('photoFile').addEventListener('change', function() {
-      if(this.files && this.files[0]) {
-        const file = this.files[0];
-        const status = document.getElementById('uploadStatus');
-        const preview = document.getElementById('photoPreview');
-        
-        status.innerText = "✅ 사진 준비 완료! [메일 발송] 버튼을 누르세요.";
-        status.style.color = "green";
+    const MAX_PHOTOS = 10;
+    let selectedFiles = [];
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          preview.src = e.target.result;
-          preview.style.display = "block";
-        };
-        reader.readAsDataURL(file);
+    function renderPhotoPreviews() {
+      const preview = document.getElementById('photoPreview');
+      const status = document.getElementById('uploadStatus');
+      preview.innerHTML = '';
+      if (selectedFiles.length === 0) {
+        preview.style.display = 'none';
+        status.innerText = '';
+        return;
       }
+      preview.style.display = 'flex';
+      selectedFiles.forEach((file, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'thumb-wrap';
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.onload = () => URL.revokeObjectURL(img.src);
+        img.alt = `미리보기 ${idx + 1}`;
+        wrap.appendChild(img);
+        const rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'thumb-remove';
+        rm.textContent = '×';
+        rm.setAttribute('aria-label', `사진 ${idx + 1} 제거`);
+        rm.onclick = () => {
+          selectedFiles.splice(idx, 1);
+          renderPhotoPreviews();
+        };
+        wrap.appendChild(rm);
+        preview.appendChild(wrap);
+      });
+      status.innerText = `✅ 사진 ${selectedFiles.length}장 준비 완료! [메일 발송] 버튼을 누르세요.`;
+      status.style.color = 'green';
+    }
+
+    document.getElementById('photoFile').addEventListener('change', function() {
+      if (!this.files || this.files.length === 0) return;
+      const incoming = Array.from(this.files);
+      const merged = selectedFiles.concat(incoming);
+      if (merged.length > MAX_PHOTOS) {
+        alert(`최대 ${MAX_PHOTOS}장까지만 첨부할 수 있습니다.`);
+        selectedFiles = merged.slice(0, MAX_PHOTOS);
+      } else {
+        selectedFiles = merged;
+      }
+      this.value = ''; // 같은 파일 다시 선택 가능하도록 초기화
+      renderPhotoPreviews();
     });
   </script>
 
   <script type="module">
     import { db, ref, set, get, push, onValue, storage, sRef, uploadBytes, getDownloadURL } from "./firebase-setup.js";
     const resultDiv = document.getElementById("qrResult");
+
+    // 모바일 사진 업로드 안정성을 위한 이미지 압축 헬퍼
+    function loadImageFallback(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error('이미지 로드 실패'));
+          img.src = reader.result;
+        };
+        reader.onerror = () => reject(new Error('파일 읽기 실패'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function compressImageToBlob(file, maxPx, quality) {
+      let source;
+      if (typeof createImageBitmap !== 'undefined') {
+        try {
+          source = await createImageBitmap(file, { imageOrientation: 'from-image' });
+        } catch {
+          source = await loadImageFallback(file);
+        }
+      } else {
+        source = await loadImageFallback(file);
+      }
+      let width = source.width;
+      let height = source.height;
+      if (width > height && width > maxPx) {
+        height = Math.round(height * maxPx / width);
+        width = maxPx;
+      } else if (height > maxPx) {
+        width = Math.round(width * maxPx / height);
+        height = maxPx;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(source, 0, 0, width, height);
+      if (source.close) source.close();
+      return await new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Blob 생성 실패'));
+        }, 'image/jpeg', quality);
+      });
+    }
 
     // 관리자 메일 불러오기
     let currentAdminEmail = "";
@@ -168,52 +258,67 @@
     // 📸 사진 전송 핵심 로직 (Firebase Cloud Function 방식)
     document.getElementById('sendPhotoBtn').onclick = async () => {
       const status = document.getElementById('uploadStatus');
-      
+
       // 버튼 클릭 즉시 반응
       status.innerText = "🚀 발송 준비 중...";
       status.style.color = "blue";
 
       const name = document.getElementById("qrName").value.trim();
-      const title = document.getElementById("photoTitle").value.trim(); 
-      const file = document.getElementById('photoFile').files[0];
+      const title = document.getElementById("photoTitle").value.trim();
+      const files = selectedFiles.slice();
 
       if (!name) return Swal.fire('알림', '맨 위에 이름을 먼저 입력해주세요!', 'warning');
       if (!title) return Swal.fire('알림', '제안 제목을 입력해주세요!', 'warning');
-      if (!file) return Swal.fire('알림', '보낼 사진을 선택해주세요!', 'warning');
-      
+      if (files.length === 0) return Swal.fire('알림', '보낼 사진을 선택해주세요!', 'warning');
+
       if (!currentAdminEmail) {
         status.innerText = "❌ 관리자 이메일 설정 필요";
         status.style.color = "red";
         return Swal.fire('오류', '관리자 페이지(세이프 미)에서 수신 이메일을 먼저 설정해주세요!', 'error');
       }
 
-      status.innerText = "⏳ 사진 서버에 저장 중... 잠시만 기다려주세요.";
-      
       try {
-        // 1단계: 사진을 Firebase Storage에 업로드 (기존과 동일)
-        const storageRef = sRef(storage, `mission_photos/${name}_${Date.now()}`);
-        await uploadBytes(storageRef, file);
-        const photoUrl = await getDownloadURL(storageRef);
+        const photoUrls = [];
+        const baseTime = Date.now();
+
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          status.innerText = `🗜️ 사진 압축 중... (${i + 1}/${files.length})`;
+
+          let uploadBlob;
+          try {
+            uploadBlob = await compressImageToBlob(file, 1600, 0.75);
+          } catch (compErr) {
+            console.warn('압축 실패, 원본 업로드로 대체:', compErr);
+            uploadBlob = file;
+          }
+
+          status.innerText = `⏳ 사진 업로드 중... (${i + 1}/${files.length})`;
+
+          const storageRef = sRef(storage, `mission_photos/${name}_${baseTime}_${i + 1}.jpg`);
+          await uploadBytes(storageRef, uploadBlob, { contentType: 'image/jpeg' });
+          const url = await getDownloadURL(storageRef);
+          photoUrls.push(url);
+        }
 
         status.innerText = "📨 메일 발송 요청 중...";
 
-        // 2단계: mailQueue에 기록 → Cloud Function이 자동 감지하여 메일 발송
         await set(push(ref(db, 'mailQueue')), {
           to: currentAdminEmail,
           name: name,
           title: title,
-          photoUrl: photoUrl,
+          photoUrls: photoUrls,
           status: 'pending',
           createdAt: new Date().toISOString()
         });
 
-        status.innerText = "✅ 전송 성공! (메일 발송 완료)";
+        status.innerText = `✅ 전송 성공! 사진 ${photoUrls.length}장 발송 완료`;
         status.style.color = "green";
-        Swal.fire('전송 완료!', '담당자 메일로 사진이 성공적으로 발송되었습니다!', 'success');
-        
-        document.getElementById('photoFile').value = "";
+        Swal.fire('전송 완료!', `담당자 메일로 사진 ${photoUrls.length}장이 성공적으로 발송되었습니다!`, 'success');
+
+        selectedFiles = [];
+        renderPhotoPreviews();
         document.getElementById('photoTitle').value = "";
-        document.getElementById('photoPreview').style.display = "none";
 
       } catch (error) {
         status.innerText = "❌ 전송 실패: " + error.message;
