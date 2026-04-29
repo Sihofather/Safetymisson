@@ -39,6 +39,7 @@
       <button class="tab-btn" onclick="showTab('tab3', this)">쪽지함</button>
       <button class="tab-btn" onclick="showTab('tab4', this)">직원 관리</button>
       <button class="tab-btn" onclick="showTab('tab5', this)">임시 목록(투표)</button>
+      <button class="tab-btn" onclick="showTab('tab6', this)">제안 현황판</button>
     </div>
 
     <div id="tab1" class="tab-content active">
@@ -134,6 +135,36 @@
         <button onclick="downloadVoteExcel()" style="background-color:#4CAF50; margin:0; width:50%; border-radius:8px;">📊 엑셀로 저장</button>
         <button onclick="resetVotes()" style="background-color:#e53935; margin:0; width:50%; border-radius:8px;">🗑️ 투표 결과 초기화</button>
       </div>
+    </div>
+
+    <div id="tab6" class="tab-content">
+      <h3 style="margin-top:0;">💡 제안 현황판 설정</h3>
+      <div style="background-color:#e8f5e9; padding:15px; border-radius:10px; margin-bottom:15px;">
+        <label><input type="checkbox" id="suggestionBoardActive" style="width:auto; transform:scale(1.5); margin-right:10px;"><b>홈 화면에 제안 현황판 표시하기</b></label>
+      </div>
+
+      <button id="toggleSuggestionFormBtn" style="background-color:#43a047;">➕ 제안 추가하기</button>
+
+      <div id="suggestionForm" style="display:none; background-color:#f1f8e9; padding:15px; border-radius:10px; margin-top:10px;">
+        <label style="font-weight:bold; font-size:16px;">제안 내용 <span style="color:#d32f2f;">*필수</span></label>
+        <textarea id="suggestionContent" rows="4" maxlength="2000" placeholder="개선 제안 내용을 입력하세요" style="width:100%; padding:10px; border-radius:5px; border:1px solid #ccc; font-size:16px; box-sizing:border-box; resize:vertical;"></textarea>
+
+        <label style="font-weight:bold; font-size:16px; display:block; margin-top:10px;">개선 전 사진 (선택)</label>
+        <input type="file" id="beforeImgInput" accept="image/*">
+        <textarea id="beforeTextInput" rows="2" maxlength="500" placeholder="개선 전 상황 설명 (선택 · 사진 없이 글로만 기록해도 됩니다)" style="width:100%; margin-top:6px; padding:8px; border-radius:5px; border:1px solid #ccc; font-size:15px; box-sizing:border-box; resize:vertical;"></textarea>
+
+        <label style="font-weight:bold; font-size:16px; display:block; margin-top:10px;">개선 후 사진 (선택)</label>
+        <input type="file" id="afterImgInput" accept="image/*">
+        <textarea id="afterTextInput" rows="2" maxlength="500" placeholder="개선 후 상황 설명 (선택 · 사진 없이 글로만 기록해도 됩니다)" style="width:100%; margin-top:6px; padding:8px; border-radius:5px; border:1px solid #ccc; font-size:15px; box-sizing:border-box; resize:vertical;"></textarea>
+
+        <div style="display:flex; gap:10px; margin-top:15px;">
+          <button id="saveSuggestionBtn" style="background-color:#2e7d32; flex:1;">💾 저장하기 및 게시</button>
+          <button id="cancelSuggestionBtn" style="background-color:#757575; flex:1;">취소</button>
+        </div>
+      </div>
+
+      <h3>📋 등록된 제안 목록</h3>
+      <div id="suggestionListArea" style="max-height:500px; overflow-y:auto; border:1px solid #eee; padding:10px; border-radius:8px;">로딩 중...</div>
     </div>
 
     <div style="text-align: center; margin-top: 40px;">
@@ -283,17 +314,19 @@
     onValue(ref(db, 'settings/voting'), (snap) => {
       if(snap.exists()) {
         const v = snap.val();
-        document.getElementById('voteActiveCheck').checked = v.isActive;
-        document.getElementById('voteTitleInput').value = v.title;
+        document.getElementById('voteActiveCheck').checked = !!v.isActive;
+        document.getElementById('voteTitleInput').value = v.title || '';
+        const options = Array.isArray(v.options) ? v.options : [];
         get(ref(db, 'votes')).then(voteSnap => {
           const resultArea = document.getElementById('voteResultArea');
           if(!voteSnap.exists()) { resultArea.innerHTML = "아직 투표한 사람이 없습니다."; return; }
+          if(options.length === 0) { resultArea.innerHTML = "투표 후보가 등록되어 있지 않습니다."; return; }
           const votes = voteSnap.val();
           let tally = {}; let total = 0;
-          v.options.forEach(opt => tally[opt] = 0);
+          options.forEach(opt => tally[opt] = 0);
           for(let user in votes) { tally[votes[user].selected] = (tally[votes[user].selected] || 0) + 1; total++; }
           let html = `<div style="font-weight:bold; margin-bottom:10px;">총 투표수: ${total}명</div>`;
-          v.options.forEach(opt => {
+          options.forEach(opt => {
             let count = tally[opt] || 0;
             let percent = total === 0 ? 0 : Math.round((count/total)*100);
             html += `<div style="margin-bottom:8px; text-align:left;"><div>${opt} (${count}표, ${percent}%)</div><div style="background:#eee; height:15px; border-radius:10px; overflow:hidden;"><div style="background:#ff9800; width:${percent}%; height:100%;"></div></div></div>`;
@@ -445,6 +478,232 @@
         });
       }
     };
+
+    // ========== 💡 제안 현황판 ==========
+    function escapeHtmlAdmin(str) {
+      if (str == null) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    function loadImageFallback(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error('이미지 로드 실패'));
+          img.src = reader.result;
+        };
+        reader.onerror = () => reject(new Error('파일 읽기 실패'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function compressImage(file, maxPx, quality) {
+      let source;
+      try {
+        if (typeof createImageBitmap !== 'undefined') {
+          try {
+            source = await createImageBitmap(file, { imageOrientation: 'from-image' });
+          } catch {
+            source = await loadImageFallback(file);
+          }
+        } else {
+          source = await loadImageFallback(file);
+        }
+
+        let width = source.width;
+        let height = source.height;
+        if (width > height && width > maxPx) {
+          height = Math.round(height * maxPx / width);
+          width = maxPx;
+        } else if (height > maxPx) {
+          width = Math.round(width * maxPx / height);
+          height = maxPx;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(source, 0, 0, width, height);
+        if (source.close) source.close();
+        return canvas.toDataURL('image/jpeg', quality);
+      } catch (e) {
+        throw new Error('이미지 처리 실패: ' + e.message);
+      }
+    }
+
+    // 홈 노출 체크박스 동기화
+    onValue(ref(db, 'settings/suggestionBoard/isActive'), (snap) => {
+      document.getElementById('suggestionBoardActive').checked = snap.exists() && snap.val() === true;
+    });
+    document.getElementById('suggestionBoardActive').onchange = async (e) => {
+      try {
+        await set(ref(db, 'settings/suggestionBoard/isActive'), e.target.checked);
+      } catch (err) {
+        alert('설정 저장 실패: ' + err.message);
+      }
+    };
+
+    // 폼 토글
+    document.getElementById('toggleSuggestionFormBtn').onclick = () => {
+      const form = document.getElementById('suggestionForm');
+      form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    };
+
+    function resetSuggestionForm() {
+      document.getElementById('suggestionContent').value = '';
+      document.getElementById('beforeImgInput').value = '';
+      document.getElementById('afterImgInput').value = '';
+      document.getElementById('beforeTextInput').value = '';
+      document.getElementById('afterTextInput').value = '';
+      document.getElementById('suggestionForm').style.display = 'none';
+    }
+
+    document.getElementById('cancelSuggestionBtn').onclick = () => {
+      const content = document.getElementById('suggestionContent').value.trim();
+      if (content && !confirm('작성 중인 내용이 사라집니다. 취소하시겠습니까?')) return;
+      resetSuggestionForm();
+    };
+
+    // 저장하기 및 게시
+    document.getElementById('saveSuggestionBtn').onclick = async (e) => {
+      const btn = e.currentTarget;
+      const content = document.getElementById('suggestionContent').value.trim();
+      if (!content) { alert('제안 내용은 필수입니다'); return; }
+
+      const beforeFile = document.getElementById('beforeImgInput').files[0];
+      const afterFile = document.getElementById('afterImgInput').files[0];
+      const beforeText = document.getElementById('beforeTextInput').value.trim();
+      const afterText = document.getElementById('afterTextInput').value.trim();
+
+      for (const f of [beforeFile, afterFile]) {
+        if (!f) continue;
+        if (!f.type || !f.type.startsWith('image/')) { alert('이미지 파일만 업로드 가능합니다'); return; }
+        if (f.size > 10 * 1024 * 1024) { alert('10MB 이하 이미지만 업로드 가능합니다'); return; }
+      }
+
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '저장 중...';
+
+      try {
+        let beforeThumb = null, beforeFull = null, afterThumb = null, afterFull = null;
+        if (beforeFile) {
+          beforeThumb = await compressImage(beforeFile, 400, 0.6);
+          beforeFull = await compressImage(beforeFile, 1280, 0.7);
+        }
+        if (afterFile) {
+          afterThumb = await compressImage(afterFile, 400, 0.6);
+          afterFull = await compressImage(afterFile, 1280, 0.7);
+        }
+
+        await set(push(ref(db, 'suggestions')), {
+          content,
+          beforeThumb, afterThumb,
+          beforeFull, afterFull,
+          beforeText: beforeText || null,
+          afterText: afterText || null,
+          date: new Date().toLocaleDateString('ko-KR'),
+          time: Date.now()
+        });
+
+        alert('게시되었습니다!');
+        resetSuggestionForm();
+      } catch (err) {
+        alert('저장 실패: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    };
+
+    // 목록 렌더링
+    onValue(ref(db, 'suggestions'), (snap) => {
+      const area = document.getElementById('suggestionListArea');
+      area.innerHTML = '';
+      if (!snap.exists()) {
+        area.innerHTML = '<div style="color:gray;">등록된 제안이 없습니다.</div>';
+        return;
+      }
+      const data = snap.val();
+      const items = Object.entries(data).sort((a, b) => (b[1].time || 0) - (a[1].time || 0));
+
+      for (const [key, s] of items) {
+        const card = document.createElement('div');
+        card.className = 'list-item';
+        card.style.display = 'block';
+
+        const contentEl = document.createElement('div');
+        contentEl.style.cssText = 'white-space:pre-wrap; font-size:16px; margin-bottom:10px;';
+        contentEl.textContent = s.content || '';
+        card.appendChild(contentEl);
+
+        const imgRow = document.createElement('div');
+        imgRow.style.cssText = 'display:flex; gap:8px; flex-wrap:wrap; align-items:stretch; margin-bottom:10px;';
+
+        function addThumb(label, src, text) {
+          const box = document.createElement('div');
+          box.style.cssText = 'font-size:14px; text-align:center; display:flex; flex-direction:column; gap:4px; max-width:180px;';
+          const lbl = document.createElement('div');
+          lbl.style.fontWeight = 'bold';
+          lbl.textContent = label;
+          box.appendChild(lbl);
+          if (src) {
+            const img = document.createElement('img');
+            img.src = src;
+            img.loading = 'lazy';
+            img.alt = label + ' 사진';
+            img.style.cssText = 'width:120px; border-radius:5px; border:1px solid #ddd;';
+            box.appendChild(img);
+          } else if (!text) {
+            const span = document.createElement('div');
+            span.style.color = 'gray';
+            span.textContent = '(내용 없음)';
+            box.appendChild(span);
+          }
+          if (text) {
+            const t = document.createElement('div');
+            t.style.cssText = 'white-space:pre-wrap; font-size:13px; color:#444; background:#f5f5f5; padding:6px 8px; border-radius:5px; text-align:left; word-break:break-word;';
+            t.textContent = text;
+            box.appendChild(t);
+          }
+          return box;
+        }
+        imgRow.appendChild(addThumb('개선 전', s.beforeThumb, s.beforeText));
+        const arrow = document.createElement('div');
+        arrow.textContent = '➡️';
+        arrow.setAttribute('aria-hidden', 'true');
+        arrow.style.cssText = 'font-size:28px; color:#ff7043; flex:0 0 auto; align-self:center;';
+        imgRow.appendChild(arrow);
+        imgRow.appendChild(addThumb('개선 후', s.afterThumb, s.afterText));
+        card.appendChild(imgRow);
+
+        const footer = document.createElement('div');
+        footer.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
+        const dateEl = document.createElement('span');
+        dateEl.style.cssText = 'font-size:12px; color:gray;';
+        dateEl.textContent = s.date || '';
+        footer.appendChild(dateEl);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-delete';
+        delBtn.textContent = '🗑️ 삭제';
+        delBtn.addEventListener('click', async () => {
+          if (!confirm('정말 삭제하시겠습니까?')) return;
+          try {
+            await set(ref(db, `suggestions/${key}`), null);
+          } catch (err) {
+            alert('삭제 실패: ' + err.message);
+          }
+        });
+        footer.appendChild(delBtn);
+        card.appendChild(footer);
+
+        area.appendChild(card);
+      }
+    });
   </script>
 </body>
 </html>
