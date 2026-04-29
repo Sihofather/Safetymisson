@@ -218,8 +218,9 @@
     };
     document.getElementById('bannerClearBtn').onclick = async () => { await set(ref(db, 'settings/banner'), null); };
 
-    // 직원 관리
-    onValue(ref(db, 'scores'), (snap) => {
+    // 직원 관리 — 점수 + 누적 활동 일수 (unique date 기준) 함께 표시
+    let scoresCache = null;
+    function renderUserList() {
       const msgSelect = document.getElementById('msgUserSelect');
       const statSelect = document.getElementById('statUserSelect');
       const listArea = document.getElementById('userListArea');
@@ -227,15 +228,27 @@
       statSelect.innerHTML = '<option value="ALL">전체 합산 보기</option>';
       listArea.innerHTML = "";
       allUsers = [];
-      if(snap.exists()) {
-        const data = snap.val();
-        for(let name in data) {
-          allUsers.push(name);
-          msgSelect.innerHTML += `<option value="${name}">${name} 님</option>`;
-          statSelect.innerHTML += `<option value="${name}">${name} 님</option>`;
-          listArea.innerHTML += `<div class='list-item'><span>${name}</span> <div><b>${data[name]}점</b> <button class="btn-delete" onclick="deleteUser('${name}')">삭제</button></div></div>`;
-        }
+      if (!scoresCache) return;
+
+      // 직원별 unique 활동 일수 집계
+      const userDays = {};
+      allHistory.forEach(h => {
+        if (!h || !h.name || !h.date) return;
+        if (!userDays[h.name]) userDays[h.name] = new Set();
+        userDays[h.name].add(h.date);
+      });
+
+      for (let name in scoresCache) {
+        allUsers.push(name);
+        msgSelect.innerHTML += `<option value="${name}">${name} 님</option>`;
+        statSelect.innerHTML += `<option value="${name}">${name} 님</option>`;
+        const days = userDays[name] ? userDays[name].size : 0;
+        listArea.innerHTML += `<div class='list-item'><span>${name}</span> <div><b>${scoresCache[name]}점 / ${days}일</b> <button class="btn-delete" onclick="deleteUser('${name}')">삭제</button></div></div>`;
       }
+    }
+    onValue(ref(db, 'scores'), (snap) => {
+      scoresCache = snap.exists() ? snap.val() : null;
+      renderUserList();
     });
 
     document.getElementById('regBtn').onclick = async () => {
@@ -377,6 +390,7 @@
     let myChartInstances = []; let allHistory = [];
     onValue(ref(db, 'history'), (snap) => {
       allHistory = []; if(snap.exists()) { const data = snap.val(); for(let key in data) allHistory.push(data[key]); }
+      renderUserList();
     });
 
     document.getElementById('statTypeSelect').onchange = (e) => {
