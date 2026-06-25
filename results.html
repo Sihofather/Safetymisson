@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>안전표어 공모 · 실시간 개표</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#0A1020;--panel:#121C30;--panel-2:#0F1828;--line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.14);
+    --text:#EEF2F8;--muted:#93A0B8;--faint:#5E6B82;--safety:#1FB562;--safety-soft:rgba(31,181,98,.16);
+    --amber:#F4B740;--amber-soft:rgba(244,183,64,.14);--gold:#E7BA52;--silver:#C2CAD6;--bronze:#C9824B;
+    --live:#FF5468;--radius:14px;--shadow:0 18px 50px rgba(0,0,0,.45)}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;
+    background:radial-gradient(1200px 600px at 80% -10%, rgba(31,181,98,.10), transparent 60%),
+      radial-gradient(1000px 500px at 0% 0%, rgba(244,183,64,.07), transparent 55%),var(--ink);
+    color:var(--text);-webkit-font-smoothing:antialiased;min-height:100vh}
+  .num{font-family:"Saira Condensed","Pretendard Variable",sans-serif;font-variant-numeric:tabular-nums}
+  .wrap{max-width:1120px;margin:0 auto;padding:20px clamp(14px,4vw,28px) 110px}
+  header.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:6px 2px 18px}
+  .brand{display:flex;flex-direction:column;gap:2px}
+  .eyebrow{font-size:12px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase;font-weight:700}
+  .title{font-size:clamp(20px,3.2vw,30px);font-weight:800;line-height:1.1}.title b{color:var(--safety)}
+  .top-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+  .live{display:inline-flex;align-items:center;gap:7px;font-weight:800;font-size:13px;letter-spacing:.08em;
+    color:#fff;background:rgba(255,84,104,.14);border:1px solid rgba(255,84,104,.4);padding:7px 12px;border-radius:999px}
+  .live.off{color:var(--muted);background:rgba(255,255,255,.05);border-color:var(--line-2)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--live);box-shadow:0 0 0 0 rgba(255,84,104,.7);animation:pulse 1.6s infinite}
+  .live.off .dot{background:var(--faint);animation:none}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,84,104,.55)}70%{box-shadow:0 0 0 9px rgba(255,84,104,0)}100%{box-shadow:0 0 0 0 rgba(255,84,104,0)}}
+  .clock{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .hero{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);
+    border-radius:var(--radius);box-shadow:var(--shadow);padding:clamp(18px,3vw,28px);
+    display:grid;grid-template-columns:1.15fr 1fr;gap:clamp(18px,3vw,34px);align-items:center;position:relative;overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:0;background:radial-gradient(420px 220px at 12% 0%, var(--amber-soft), transparent 70%);pointer-events:none}
+  .turn-label{font-size:13px;font-weight:700;letter-spacing:.14em;color:var(--amber);text-transform:uppercase}
+  .turn-big{display:flex;align-items:baseline;gap:6px;margin:4px 0 14px}
+  .turn-pct{font-size:clamp(64px,12vw,104px);font-weight:800;line-height:.88;color:#fff;text-shadow:0 4px 30px rgba(244,183,64,.25)}
+  .turn-sym{font-size:clamp(26px,4vw,40px);font-weight:700;color:var(--amber)}
+  .turn-meta{display:flex;gap:24px;flex-wrap:wrap}
+  .turn-meta .k{font-size:12px;color:var(--muted)}.turn-meta .v{font-size:22px;font-weight:800;margin-top:2px}
+  .turn-meta .v small{font-size:13px;color:var(--faint);font-weight:600}
+  .turn-meta .v .qr{color:var(--safety)}.turn-meta .v .sm{color:var(--amber)}
+  .meter{height:34px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line-2);position:relative;overflow:hidden;box-shadow:inset 0 2px 8px rgba(0,0,0,.45)}
+  .meter-fill{position:absolute;inset:0 auto 0 0;width:0%;border-radius:9px;background:linear-gradient(90deg,#E89B1C,var(--amber));transition:width .9s cubic-bezier(.22,1,.36,1)}
+  .meter-grid{position:absolute;inset:0;display:flex;pointer-events:none}
+  .meter-grid span{flex:1;border-right:1px solid rgba(255,255,255,.06)}.meter-grid span:last-child{border-right:0}
+  .meter-cap{display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--faint)}
+  .leader{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .leader .tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.12em;
+    color:var(--safety);background:var(--safety-soft);border:1px solid rgba(31,181,98,.35);padding:5px 10px;border-radius:999px}
+  .leader .slogan{font-size:clamp(17px,2.3vw,22px);font-weight:800;line-height:1.35;margin:12px 0 6px}
+  .leader .lead-meta{display:flex;align-items:baseline;gap:10px;color:var(--muted);font-size:13px}
+  .leader .lead-meta b{font-family:"Saira Condensed",sans-serif;font-size:24px;color:#fff}
+  .leader .gap{margin-top:10px;font-size:12px;color:var(--faint)}
+  .board-head{display:flex;align-items:center;justify-content:space-between;margin:26px 2px 12px}
+  .board-head h2{font-size:16px;font-weight:800;margin:0}.board-head .hint{font-size:12px;color:var(--faint)}
+  .board{display:flex;flex-direction:column;gap:8px;position:relative}
+  .row{display:grid;grid-template-columns:46px 1fr 96px;align-items:center;gap:14px;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;will-change:transform}
+  .row.lead{border-color:rgba(31,181,98,.5);box-shadow:0 0 0 1px rgba(31,181,98,.25),0 10px 26px rgba(0,0,0,.3)}
+  .rank{font-family:"Saira Condensed",sans-serif;font-size:24px;font-weight:800;text-align:center;color:var(--faint)}
+  .rank.m1{color:var(--gold)}.rank.m2{color:var(--silver)}.rank.m3{color:var(--bronze)}
+  .cell{min-width:0}
+  .slo{font-size:15px;font-weight:600;line-height:1.3;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar{height:10px;border-radius:6px;background:var(--panel-2);overflow:hidden}
+  .bar > i{display:block;height:100%;width:0%;border-radius:6px;background:linear-gradient(90deg,rgba(31,181,98,.55),var(--safety));transition:width .85s cubic-bezier(.22,1,.36,1)}
+  .row.lead .bar > i{background:linear-gradient(90deg,#15904e,#2BE07C)}
+  .stat{text-align:right}
+  .votes{font-family:"Saira Condensed",sans-serif;font-size:22px;font-weight:800;line-height:1}
+  .pct{font-size:12px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
+  .flash{animation:flash .9s ease}@keyframes flash{0%{background:var(--safety-soft)}100%{background:var(--panel)}}
+  .ticker{margin-top:22px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .ticker-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--muted)}
+  .ticker-list{list-style:none;margin:0;padding:6px 0;max-height:168px;overflow:hidden}
+  .ticker-list li{display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:13px;color:var(--muted);animation:slidein .45s ease}
+  .ticker-list li .who{color:var(--text);font-weight:700}
+  .ticker-list li .ch{font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px}
+  .ticker-list li .ch.sm{color:var(--amber);background:var(--amber-soft)}.ticker-list li .ch.qr{color:var(--safety);background:var(--safety-soft)}
+  .ticker-list li .pick{color:var(--safety);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  @keyframes slidein{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+  .controls{position:fixed;left:0;right:0;bottom:0;z-index:40;background:linear-gradient(180deg,transparent,rgba(10,16,32,.92) 30%);padding:24px clamp(14px,4vw,28px) 18px}
+  .controls-inner{max-width:1120px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .elig{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);background:var(--panel);border:1px solid var(--line-2);border-radius:10px;padding:8px 10px}
+  .elig input{width:70px;background:transparent;border:0;color:#fff;font-weight:800;font-size:15px;font-family:"Saira Condensed",sans-serif;text-align:right;outline:none}
+  .elig .auto{font-size:11px;color:var(--faint)}
+  .mode-note{font-size:12px;color:var(--faint);margin-left:auto}.mode-note b{color:var(--amber)}
+  @media (max-width:760px){.hero{grid-template-columns:1fr}.row{grid-template-columns:38px 1fr 80px;gap:10px}.mode-note{display:none}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="eyebrow">미원상사 · 안전환경지원팀</span>
+      <h1 class="title" id="hTitle">안전표어 공모 <b>실시간 개표</b></h1></div>
+    <div class="top-right"><span class="live" id="liveBadge"><span class="dot"></span>LIVE</span>
+      <span class="clock num" id="clock">--:--:--</span></div>
+  </header>
+  <section class="hero">
+    <div>
+      <div class="turn-label">전체 투표율</div>
+      <div class="turn-big"><span class="turn-pct num" id="turnoutPct">0.0</span><span class="turn-sym">%</span></div>
+      <div class="meter"><div class="meter-fill" id="meterFill"></div>
+        <div class="meter-grid"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+      <div class="meter-cap"><span>0%</span><span>50%</span><span>100%</span></div>
+    </div>
+    <div>
+      <div class="turn-meta" style="margin-bottom:16px">
+        <div><div class="k">투표 인원</div><div class="v num" id="votedCount">0 <small>명</small></div></div>
+        <div><div class="k">대상 인원</div><div class="v num" id="eligibleShow">0 <small>명</small></div></div>
+        <div><div class="k">채널</div><div class="v num"><span class="sm" id="smCount">0</span><small> 세이프미 · </small><span class="qr" id="qrCount">0</span><small> QR</small></div></div>
+      </div>
+      <div class="leader" id="leaderCard">
+        <span class="tag">🏆 현재 1위</span>
+        <div class="slogan" id="leadSlogan">— 집계 대기 중 —</div>
+        <div class="lead-meta"><b class="num" id="leadVotes">0</b>표 · <span class="num" id="leadPct">0.0</span>%</div>
+        <div class="gap" id="leadGap">2위와 격차 —</div>
+      </div>
+    </div>
+  </section>
+  <div class="board-head"><h2>표어별 득표 현황 <span class="hint">· 득표순 자동 정렬</span></h2>
+    <span class="hint" id="candCount">후보 0</span></div>
+  <div class="board" id="board"></div>
+  <div class="ticker"><div class="ticker-head"><span class="dot"></span> 실시간 투표 현황</div>
+    <ul class="ticker-list" id="ticker"></ul></div>
+</div>
+<div class="controls"><div class="controls-inner">
+  <span class="elig">대상 인원 <input id="eligInput" class="num" type="number" min="0" placeholder="auto"> 명 <span class="auto" id="eligAuto">(scores 자동)</span></span>
+  <span class="mode-note">● 세이프미 RTDB 실시간 연동 · settings/voting · votes · scores 구독</span>
+</div></div>
+
+<script type="module">
+// 세이프미 기존 초기화 그대로 재사용 (설정 복붙 불필요)
+import { db, ref, onValue } from "./firebase-setup.js";
+
+const view={title:"안전표어 공모",options:[],counts:{},voted:0,scoresCount:0,manualElig:0,src:{safeme:0,qr:0},feed:[]};
+const seen=new Set();
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const board=$("#board");let nodesById={};
+
+function buildBoard(){board.innerHTML="";nodesById={};
+  view.options.forEach(o=>{const row=document.createElement("div");row.className="row";
+    row.innerHTML=`<div class="rank num">-</div><div class="cell"><div class="slo"></div><div class="bar"><i></i></div></div>
+      <div class="stat"><div class="votes num">0</div><div class="pct">0%</div></div>`;
+    board.appendChild(row);nodesById[o]=row;});
+  $("#candCount").textContent="후보 "+view.options.length;}
+function rollNumber(el,to,dur=700){const from=parseFloat(el.dataset.v||"0");if(from===to){el.textContent=to.toFixed(1);return;}
+  const t0=performance.now();function step(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+    el.textContent=(from+(to-from)*e).toFixed(1);if(p<1)requestAnimationFrame(step);else el.dataset.v=to;}
+  el.dataset.v=to;requestAnimationFrame(step);}
+function render(animateFlip=true){
+  $("#hTitle").innerHTML=esc(view.title)+' <b>실시간 개표</b>';
+  const opts=view.options,total=opts.reduce((a,o)=>a+(view.counts[o]||0),0);
+  const elig=Math.max(1, view.manualElig>0?view.manualElig:(view.scoresCount||1));
+  const turnout=Math.min(100,view.voted/elig*100);
+  rollNumber($("#turnoutPct"),turnout);$("#meterFill").style.width=turnout+"%";
+  $("#votedCount").innerHTML=view.voted+' <small>명</small>';
+  $("#eligibleShow").innerHTML=elig+' <small>명</small>';
+  $("#smCount").textContent=view.src.safeme;$("#qrCount").textContent=view.src.qr;
+  const order=opts.slice().sort((a,b)=>((view.counts[b]||0)-(view.counts[a]||0))||(a>b?1:-1));
+  const lead=order[0],leadV=lead?(view.counts[lead]||0):0,secondV=order[1]?(view.counts[order[1]]||0):0;
+  if(total>0&&lead){$("#leadSlogan").textContent=lead;$("#leadVotes").textContent=leadV;
+    $("#leadPct").textContent=(leadV/total*100).toFixed(1);$("#leadGap").textContent="2위와 격차 "+(leadV-secondV)+"표";}
+  else{$("#leadSlogan").textContent="— 집계 대기 중 —";$("#leadVotes").textContent="0";$("#leadPct").textContent="0.0";$("#leadGap").textContent="2위와 격차 —";}
+  const ordered=order.map(o=>nodesById[o]).filter(Boolean);
+  const first=ordered.map(n=>n.getBoundingClientRect().top);
+  order.forEach(o=>{if(nodesById[o])board.appendChild(nodesById[o]);});
+  const maxV=Math.max(1,leadV);
+  order.forEach((o,rank)=>{const row=nodesById[o];if(!row)return;const v=view.counts[o]||0;
+    row.querySelector(".rank").textContent=rank+1;row.querySelector(".rank").className="rank num"+(rank<3?(" m"+(rank+1)):"");
+    row.querySelector(".slo").textContent=o;row.querySelector(".slo").title=o;
+    row.querySelector(".votes").textContent=v;row.querySelector(".pct").textContent=total?(v/total*100).toFixed(1)+"%":"0%";
+    row.querySelector(".bar > i").style.width=(v/maxV*100)+"%";row.classList.toggle("lead",rank===0&&total>0);});
+  if(animateFlip){const last=ordered.map(n=>n.getBoundingClientRect().top);
+    ordered.forEach((n,i)=>{const dy=first[i]-last[i];if(dy){n.style.transform=`translateY(${dy}px)`;n.style.transition="transform 0s";
+      requestAnimationFrame(()=>{n.style.transition="transform .55s cubic-bezier(.22,1,.36,1)";n.style.transform="";});}});}
+  renderTicker();}
+function renderTicker(){const ul=$("#ticker");ul.innerHTML="";const recent=view.feed.slice(0,8);
+  if(!recent.length){ul.innerHTML=`<li style="color:var(--faint)">투표가 들어오면 여기에 실시간으로 표시됩니다.</li>`;return;}
+  recent.forEach(e=>{const li=document.createElement("li");const ch=e.channel==="qr"?"qr":"sm";
+    li.innerHTML=`<span class="ch ${ch}">${ch==="qr"?"QR":"세이프미"}</span><span class="who">${esc(e.name)}</span>
+      <span style="color:var(--faint)">▸</span><span class="pick" title="${esc(e.pick)}">${esc(e.pick)}</span>`;ul.appendChild(li);});}
+function flashRow(o){const r=nodesById[o];if(!r)return;r.classList.remove("flash");void r.offsetWidth;r.classList.add("flash");}
+
+function applyVotes(votesObj,firstLoad){
+  const counts={};view.options.forEach(o=>counts[o]=0);let voted=0,src={safeme:0,qr:0};const newcomers=[];
+  for(const name in votesObj){const v=votesObj[name]||{};voted++;const pick=v.selected;if(pick in counts)counts[pick]++;
+    const ch=v.channel==="qr"?"qr":"safeme";src[ch]++;
+    if(!seen.has(name)){seen.add(name);newcomers.push({name,pick,channel:ch});}}
+  view.counts=counts;view.voted=voted;view.src=src;
+  if(firstLoad){view.feed=newcomers.slice(-8).reverse();render(false);}
+  else{newcomers.reverse().forEach(x=>view.feed.unshift(x));if(view.feed.length>40)view.feed.length=40;
+    render();newcomers.forEach(x=>{if(nodesById[x.pick])flashRow(x.pick);});}}
+
+let lastVotes={},votesFirst=true;
+onValue(ref(db,"settings/voting"),snap=>{const d=snap.val()||{};
+  view.title=d.title||view.title;view.options=Array.isArray(d.options)?d.options:[];
+  buildBoard();applyVotes(lastVotes,false);});
+onValue(ref(db,"scores"),snap=>{const d=snap.val()||{};view.scoresCount=Object.keys(d).length;
+  if(view.manualElig<=0)$("#eligAuto").textContent="(scores 자동: "+view.scoresCount+")";render(false);});
+onValue(ref(db,"votes"),snap=>{const d=snap.val()||{};lastVotes=d;applyVotes(d,votesFirst);votesFirst=false;});
+
+$("#eligInput").oninput=e=>{const n=parseInt(e.target.value)||0;view.manualElig=n;
+  $("#eligAuto").textContent=n>0?"(직접 입력)":"(scores 자동: "+view.scoresCount+")";render(false);};
+setInterval(()=>{$("#clock").textContent=new Date().toLocaleTimeString("ko-KR",{hour12:false});},1000);
+$("#clock").textContent=new Date().toLocaleTimeString("ko-KR",{hour12:false});
+</script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>안전표어 투표 · 관리(분기 마감/보관)</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{--ink:#1A2230;--muted:#5B6678;--line:#E6E9EF;--green:#15803D;--amber:#D97706;--red:#DC2626;--bg:#F4F6FA}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;background:var(--bg);color:var(--ink);
+    -webkit-font-smoothing:antialiased;padding:24px 16px 60px}
+  .wrap{max-width:680px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:20px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(20,30,50,.04)}
+  .card h2{font-size:15px;font-weight:800;margin:0 0 14px;color:var(--ink)}
+  .stat-row{display:flex;gap:14px;flex-wrap:wrap}
+  .stat{flex:1;min-width:120px;background:#F8FAFC;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .stat .k{font-size:12px;color:var(--muted);font-weight:600}
+  .stat .v{font-size:24px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
+  label{display:block;font-size:13px;color:var(--muted);font-weight:700;margin:0 0 6px}
+  input{width:100%;background:#fff;border:1.5px solid var(--line);border-radius:10px;color:var(--ink);font-size:15px;font-family:inherit;padding:11px 12px;outline:none}
+  input:focus{border-color:var(--green)}
+  button{font-family:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);font-weight:700;font-size:14px;padding:12px 16px}
+  button.primary{background:var(--green);color:#fff;border:0}
+  button.danger{background:var(--red);color:#fff;border:0}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .danger-note{font-size:13px;color:var(--red);background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 12px;margin:12px 0}
+  .arch{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .arch:last-child{border-bottom:0}
+  .arch .id{font-weight:800}.arch .meta{color:var(--muted);font-size:13px}
+  .gate{max-width:380px;margin:60px auto;text-align:center}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- 비밀번호 잠금 -->
+  <div id="gate" class="gate">
+    <h1>관리자 인증</h1>
+    <div class="sub">분기 마감·보관 도구</div>
+    <div class="card">
+      <label for="pass">비밀번호</label>
+      <input id="pass" type="password" placeholder="비밀번호 입력">
+      <button class="primary" id="unlock" style="width:100%;margin-top:12px">잠금 해제</button>
+    </div>
+  </div>
+
+  <!-- 본문 -->
+  <div id="panel" class="hidden">
+    <h1>안전표어 투표 관리</h1>
+    <div class="sub">분기 마감 시 결과를 <b>보관 후 초기화</b>합니다. 세이프미 항목 설정은 세이프미에서 하세요.</div>
+
+    <div class="card">
+      <h2>현재 진행 중인 투표</h2>
+      <div class="stat-row">
+        <div class="stat"><div class="k">제목</div><div class="v" id="sTitle" style="font-size:16px">—</div></div>
+        <div class="stat"><div class="k">투표 인원</div><div class="v" id="sVotes">0</div></div>
+        <div class="stat"><div class="k">대상(scores)</div><div class="v" id="sScores">0</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>분기 마감 → 보관 후 초기화</h2>
+      <label for="eid">보관 이름 (분기/회차)</label>
+      <input id="eid" placeholder="예: 2026Q1">
+      <div class="danger-note">⚠️ 현재 <b>votes/</b>를 <b>archive/[보관이름]</b>으로 복사한 뒤 비웁니다. 비운 표는 되돌릴 수 없습니다(보관본은 남습니다).</div>
+      <button class="danger" id="closeBtn" style="width:100%">보관 후 초기화 실행</button>
+    </div>
+
+    <div class="card">
+      <h2>지난 분기 보관함</h2>
+      <div id="archList"><div class="meta" style="color:var(--muted)">불러오는 중…</div></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { db, ref, get, set } from "./firebase-setup.js";
+
+const ADMIN_PASS = "0000"; // ← 배포 전 변경하세요
+
+const $=s=>document.querySelector(s);
+$("#unlock").onclick=()=>{ if($("#pass").value===ADMIN_PASS){ $("#gate").classList.add("hidden"); $("#panel").classList.remove("hidden"); init(); }
+  else Swal.fire('오류','비밀번호가 올바르지 않습니다.','error'); };
+$("#pass").addEventListener("keydown",e=>{ if(e.key==="Enter")$("#unlock").click(); });
+
+async function loadCurrent(){
+  const [vs,sc,cfg]=await Promise.all([ get(ref(db,"votes")), get(ref(db,"scores")), get(ref(db,"settings/voting")) ]);
+  const votes=vs.val()||{}, scores=sc.val()||{}, conf=cfg.val()||{};
+  $("#sTitle").textContent=conf.title||"(설정 없음)";
+  $("#sVotes").textContent=Object.keys(votes).length;
+  $("#sScores").textContent=Object.keys(scores).length;
+  // 보관 이름 기본값 추천 (연도+분기)
+  const d=new Date(), q=Math.floor(d.getMonth()/3)+1;
+  if(!$("#eid").value) $("#eid").value=d.getFullYear()+"Q"+q;
+  return {votes, conf};
+}
+async function loadArchive(){
+  const snap=await get(ref(db,"archive")); const data=snap.val()||{};
+  const ids=Object.keys(data).sort().reverse();
+  const box=$("#archList");
+  if(!ids.length){ box.innerHTML='<div class="meta">아직 보관된 분기가 없습니다.</div>'; return; }
+  box.innerHTML="";
+  ids.forEach(id=>{ const a=data[id]||{}; const cnt=a.votes?Object.keys(a.votes).length:0;
+    // 1위 계산
+    const c={}; if(a.votes) for(const n in a.votes){const s=a.votes[n].selected; c[s]=(c[s]||0)+1;}
+    let top="—",mx=-1; for(const k in c){ if(c[k]>mx){mx=c[k];top=k;} }
+    const row=document.createElement("div"); row.className="arch";
+    row.innerHTML=`<div><div class="id">${id}</div><div class="meta">${a.title||""} · ${cnt}표</div></div>
+      <div class="meta" style="text-align:right;max-width:55%">🏆 ${top}${mx>0?` (${mx}표)`:""}</div>`;
+    box.appendChild(row); });
+}
+async function init(){ await loadCurrent(); await loadArchive(); }
+
+$("#closeBtn").onclick=async()=>{
+  const id=$("#eid").value.trim();
+  if(!id) return Swal.fire('알림','보관 이름(분기)을 입력하세요.','warning');
+  if(/[.#$\[\]\/]/.test(id)) return Swal.fire('오류','보관 이름에 . # $ [ ] / 는 쓸 수 없습니다.','error');
+
+  const {votes, conf}=await loadCurrent();
+  const cnt=Object.keys(votes).length;
+
+  const exists=await get(ref(db,"archive/"+id));
+  if(exists.exists()){ const ok=await Swal.fire({icon:'warning',title:`'${id}' 보관본이 이미 있습니다`,text:'덮어쓸까요?',showCancelButton:true,confirmButtonText:'덮어쓰기',cancelButtonText:'취소'}); if(!ok.isConfirmed)return; }
+
+  const c=await Swal.fire({icon:'question',title:'보관 후 초기화 실행',
+    html:`<b>${conf.title||'현재 투표'}</b><br>${cnt}표를 <b>archive/${id}</b>에 보관하고<br>votes/를 비웁니다.`,
+    showCancelButton:true,confirmButtonText:'실행',cancelButtonText:'취소',confirmButtonColor:'#DC2626'});
+  if(!c.isConfirmed) return;
+
+  try{
+    // 1) 보관
+    await set(ref(db,"archive/"+id), {
+      title: conf.title||"", options: conf.options||[], votes: votes,
+      voted: cnt, closedAt: new Date().toLocaleString('ko-KR')
+    });
+    // 2) 초기화
+    await set(ref(db,"votes"), null);
+    // 3) 투표 비활성화 (세이프미 설정은 그대로, 진행 상태만 종료)
+    await set(ref(db,"settings/voting/isActive"), false);
+
+    await Swal.fire('완료',`'${id}'에 ${cnt}표를 보관하고 초기화했습니다.`,'success');
+    await init();
+  }catch(e){ console.error(e); Swal.fire('오류','처리 중 문제가 발생했습니다.','error'); }
+};
+</script>
+</body>
+</html>
