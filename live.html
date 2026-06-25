@@ -154,7 +154,7 @@ const VOTE_URL = (location.protocol === "file:") ? FALLBACK_URL : new URL("vote-
 })();
 
 /* ── 실시간 개표 ── */
-const view={title:"안전표어 공모",options:[],counts:{},voted:0,scoresCount:0,active:false,src:{safeme:0,qr:0}};
+const view={title:"안전표어 공모",options:[],counts:{},voted:0,scoresCount:0,eligTotal:0,active:false,src:{safeme:0,qr:0}};
 const seen=new Set();
 const $=s=>document.querySelector(s);
 let nodesById={};
@@ -179,10 +179,10 @@ function render(animate=true){
   $("#hTitle").innerHTML=esc(view.title)+' <b>실시간 투표 · 개표</b>';
   setStatus();
   const opts=view.options,total=opts.reduce((a,o)=>a+(view.counts[o]||0),0);
-  const elig=Math.max(1,view.scoresCount||1);
+  const elig=Math.max(1, view.eligTotal>0 ? view.eligTotal : (view.scoresCount||1));
   const turnout=Math.min(100,view.voted/elig*100);
   rollNumber($("#turnoutPct"),turnout);$("#meterFill").style.width=turnout+"%";
-  $("#votedCount").textContent=view.voted;$("#eligCount").textContent=view.scoresCount;
+  $("#votedCount").textContent=view.voted;$("#eligCount").textContent=elig;
   $("#smCount").textContent=view.src.safeme;$("#qrCount").textContent=view.src.qr;
   const order=opts.slice().sort((a,b)=>((view.counts[b]||0)-(view.counts[a]||0))||(a>b?1:-1));
   const leadV=order[0]?(view.counts[order[0]]||0):0,maxV=Math.max(1,leadV);
@@ -212,6 +212,7 @@ function applyVotes(votesObj,firstLoad){
 let lastVotes={},votesFirst=true;
 onValue(ref(db,"settings/voting"),snap=>{const d=snap.val()||{};
   view.title=d.title||view.title;view.active=!!d.isActive;view.options=Array.isArray(d.options)?d.options:[];
+  view.eligTotal=Number(d.eligibleTotal)||0;
   buildBoard();applyVotes(lastVotes,false);});
 onValue(ref(db,"scores"),snap=>{const d=snap.val()||{};view.scoresCount=Object.keys(d).length;render(false);});
 onValue(ref(db,"votes"),snap=>{const d=snap.val()||{};lastVotes=d;applyVotes(d,votesFirst);votesFirst=false;});

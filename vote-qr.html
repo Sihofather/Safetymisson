@@ -26,6 +26,7 @@
 
     <div style="text-align: center;">
       <input type="text" id="voterName" placeholder="본인 이름을 입력하세요">
+      <input type="text" id="voterTeam" placeholder="소속 팀을 입력하세요 (예: 안전환경지원팀)">
     </div>
 
     <div id="optionsArea"></div>
@@ -62,31 +63,36 @@
     });
 
     document.getElementById('submitVoteBtn').onclick = async () => {
-      const name = document.getElementById('voterName').value.trim();
+      const name = document.getElementById('voterName').value.replace(/\s+/g, ''); // 띄어쓰기 제거 → 중복방지 키 일치
+      const team = document.getElementById('voterTeam').value.trim();
       if (!name) return Swal.fire('알림', '이름을 먼저 입력해주세요!', 'warning');
-
-      // 등록된 직원인지 확인 (세이프미와 동일한 scores 명부)
-      const userSnap = await get(ref(db, `scores/${name}`));
-      if (!userSnap.exists()) return Swal.fire('오류', '등록되지 않은 이름입니다.', 'error');
+      if (!team) return Swal.fire('알림', '소속 팀을 입력해주세요!', 'warning');
 
       const selectedOption = document.querySelector('input[name="voteItem"]:checked');
       if (!selectedOption) return Swal.fire('알림', '투표할 항목을 하나 선택해주세요!', 'warning');
 
-      // 중복 확인 — 세이프미·QR이 같은 votes/{이름}을 공유하므로 채널 무관 1인 1표
+      // 중복 확인 — 세이프미·QR이 같은 votes/{이름} 키를 공유하므로 채널 무관 1인 1표.
+      // 세이프미 앱에서 이미 투표한 사람이 QR로 또 찍어도 같은 이름 키로 차단됨(교차 중복 방지).
       const voteSnap = await get(ref(db, `votes/${name}`));
       if (voteSnap.exists()) {
         return Swal.fire('안내', '이미 소중한 한 표를 행사하셨습니다. 참여해주셔서 감사합니다!', 'info');
       }
 
-      // 투표 저장 — QR 채널 표시만 추가
+      // 투표 저장 — 이름 키 + 팀·QR 채널 기록 (명부 등록 여부와 무관하게 누구나 1표)
       await set(ref(db, `votes/${name}`), {
         selected: selectedOption.value,
+        team: team,
         channel: 'qr',
         time: new Date().toLocaleString('ko-KR')
       });
 
       Swal.fire('투표 완료!', '투표가 성공적으로 반영되었습니다. 감사합니다!', 'success');
     };
+
+    // 이름 입력 시 띄어쓰기 자동 차단 (세이프미·QR 간 동일 이름 키 유지 → 중복 투표 방지)
+    document.getElementById('voterName').addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\s/g, '');
+    });
   </script>
 </body>
 </html>

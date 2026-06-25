@@ -135,7 +135,7 @@
 // 세이프미 기존 초기화 그대로 재사용 (설정 복붙 불필요)
 import { db, ref, onValue } from "./firebase-setup.js";
 
-const view={title:"안전표어 공모",options:[],counts:{},voted:0,scoresCount:0,manualElig:0,src:{safeme:0,qr:0},feed:[]};
+const view={title:"안전표어 공모",options:[],counts:{},voted:0,scoresCount:0,eligTotal:0,manualElig:0,src:{safeme:0,qr:0},feed:[]};
 const seen=new Set();
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -154,7 +154,7 @@ function rollNumber(el,to,dur=700){const from=parseFloat(el.dataset.v||"0");if(f
 function render(animateFlip=true){
   $("#hTitle").innerHTML=esc(view.title)+' <b>실시간 개표</b>';
   const opts=view.options,total=opts.reduce((a,o)=>a+(view.counts[o]||0),0);
-  const elig=Math.max(1, view.manualElig>0?view.manualElig:(view.scoresCount||1));
+  const elig=Math.max(1, view.manualElig>0?view.manualElig:(view.eligTotal>0?view.eligTotal:(view.scoresCount||1)));
   const turnout=Math.min(100,view.voted/elig*100);
   rollNumber($("#turnoutPct"),turnout);$("#meterFill").style.width=turnout+"%";
   $("#votedCount").innerHTML=view.voted+' <small>명</small>';
@@ -198,6 +198,8 @@ function applyVotes(votesObj,firstLoad){
 let lastVotes={},votesFirst=true;
 onValue(ref(db,"settings/voting"),snap=>{const d=snap.val()||{};
   view.title=d.title||view.title;view.options=Array.isArray(d.options)?d.options:[];
+  view.eligTotal=Number(d.eligibleTotal)||0;
+  if(view.manualElig<=0)$("#eligAuto").textContent=view.eligTotal>0?"(설정값: "+view.eligTotal+")":"(scores 자동: "+view.scoresCount+")";
   buildBoard();applyVotes(lastVotes,false);});
 onValue(ref(db,"scores"),snap=>{const d=snap.val()||{};view.scoresCount=Object.keys(d).length;
   if(view.manualElig<=0)$("#eligAuto").textContent="(scores 자동: "+view.scoresCount+")";render(false);});
