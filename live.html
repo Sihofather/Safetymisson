@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>안전표어 공모 · 라이브(투표+개표)</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{--ink:#0A1020;--panel:#121C30;--panel-2:#0F1828;--line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.14);
+    --text:#EEF2F8;--muted:#93A0B8;--faint:#5E6B82;--safety:#1FB562;--safety-soft:rgba(31,181,98,.16);
+    --amber:#F4B740;--amber-soft:rgba(244,183,64,.14);--gold:#E7BA52;--silver:#C2CAD6;--bronze:#C9824B;
+    --live:#FF5468;--radius:16px}
+  *{box-sizing:border-box}html,body{margin:0;height:100%}
+  body{font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;
+    background:radial-gradient(1400px 700px at 85% -10%, rgba(31,181,98,.10), transparent 60%),
+      radial-gradient(1100px 560px at 0% 0%, rgba(244,183,64,.07), transparent 55%),var(--ink);
+    color:var(--text);-webkit-font-smoothing:antialiased;overflow:hidden}
+  .num{font-family:"Saira Condensed","Pretendard Variable",sans-serif;font-variant-numeric:tabular-nums}
+  .stage{height:100vh;display:flex;flex-direction:column;padding:clamp(14px,1.6vh,24px) clamp(16px,2vw,34px)}
+  /* 헤더 */
+  header.top{display:flex;align-items:center;gap:16px;padding-bottom:clamp(10px,1.4vh,18px);flex:0 0 auto}
+  .eyebrow{font-size:clamp(11px,1vw,14px);letter-spacing:.18em;color:var(--faint);text-transform:uppercase;font-weight:700}
+  .title{font-size:clamp(22px,2.6vw,40px);font-weight:800;line-height:1.05}.title b{color:var(--safety)}
+  .top-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .status{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:clamp(12px,1.1vw,16px);letter-spacing:.06em;
+    color:#fff;background:rgba(255,84,104,.14);border:1px solid rgba(255,84,104,.4);padding:8px 14px;border-radius:999px}
+  .status.off{color:var(--amber);background:var(--amber-soft);border-color:rgba(244,183,64,.4)}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--live);animation:pulse 1.6s infinite}
+  .status.off .dot{background:var(--amber);animation:none}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,84,104,.55)}70%{box-shadow:0 0 0 10px rgba(255,84,104,0)}100%{box-shadow:0 0 0 0 rgba(255,84,104,0)}}
+  .clock{font-size:clamp(14px,1.3vw,20px);color:var(--muted)}
+  /* 본문 2단 */
+  .grid{flex:1 1 auto;display:grid;grid-template-columns:1fr clamp(300px,30vw,460px);gap:clamp(14px,1.6vw,26px);min-height:0}
+  /* 좌: 개표 */
+  .left{display:flex;flex-direction:column;min-height:0;gap:clamp(10px,1.4vh,18px)}
+  .turnbar{display:flex;align-items:center;gap:clamp(16px,2vw,30px);background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);border-radius:var(--radius);padding:clamp(12px,1.8vh,22px) clamp(16px,2vw,28px);flex:0 0 auto}
+  .turnbar .big{display:flex;align-items:baseline;gap:6px}
+  .turnbar .pct{font-size:clamp(40px,5.6vw,84px);font-weight:800;line-height:.85;color:#fff}
+  .turnbar .sym{font-size:clamp(20px,2.4vw,34px);font-weight:700;color:var(--amber)}
+  .turnbar .lab{font-size:clamp(11px,1vw,14px);font-weight:700;letter-spacing:.12em;color:var(--amber);text-transform:uppercase;margin-bottom:6px}
+  .turnbar .meter{flex:1;height:clamp(18px,2.4vh,30px);border-radius:10px;background:var(--panel-2);border:1px solid var(--line-2);position:relative;overflow:hidden}
+  .turnbar .meter > i{position:absolute;inset:0 auto 0 0;width:0%;border-radius:9px;background:linear-gradient(90deg,#E89B1C,var(--amber));transition:width .9s cubic-bezier(.22,1,.36,1)}
+  .turnbar .nums{flex:0 0 auto;text-align:right}
+  .turnbar .nums .v{font-size:clamp(18px,2vw,30px);font-weight:800}
+  .turnbar .nums .k{font-size:clamp(10px,.9vw,13px);color:var(--muted)}
+  .turnbar .nums .ch{font-size:clamp(11px,1vw,15px);margin-top:4px}.turnbar .nums .ch .sm{color:var(--amber);font-weight:800}.turnbar .nums .ch .qr{color:var(--safety);font-weight:800}
+  .boardwrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+  .boardhead{display:flex;align-items:center;justify-content:space-between;margin:0 2px 8px;flex:0 0 auto}
+  .boardhead h2{font-size:clamp(13px,1.2vw,18px);font-weight:800;margin:0}.boardhead .hint{font-size:clamp(11px,1vw,14px);color:var(--faint)}
+  .board{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:clamp(5px,.8vh,9px);padding-right:4px;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+  .board::-webkit-scrollbar{width:8px}.board::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:8px}
+  .row{display:grid;grid-template-columns:clamp(34px,3vw,52px) 1fr clamp(78px,8vw,120px);align-items:center;gap:clamp(8px,1vw,16px);
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:clamp(7px,1vh,13px) clamp(10px,1.2vw,16px)}
+  .row.lead{border-color:rgba(31,181,98,.5);box-shadow:0 0 0 1px rgba(31,181,98,.25)}
+  .rank{font-family:"Saira Condensed",sans-serif;font-size:clamp(18px,2vw,30px);font-weight:800;text-align:center;color:var(--faint)}
+  .rank.m1{color:var(--gold)}.rank.m2{color:var(--silver)}.rank.m3{color:var(--bronze)}
+  .cell{min-width:0}
+  .slo{font-size:clamp(13px,1.25vw,19px);font-weight:600;line-height:1.25;margin-bottom:clamp(4px,.7vh,7px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar{height:clamp(7px,1vh,11px);border-radius:6px;background:var(--panel-2);overflow:hidden}
+  .bar > i{display:block;height:100%;width:0%;border-radius:6px;background:linear-gradient(90deg,rgba(31,181,98,.55),var(--safety));transition:width .85s cubic-bezier(.22,1,.36,1)}
+  .row.lead .bar > i{background:linear-gradient(90deg,#15904e,#2BE07C)}
+  .stat{text-align:right}
+  .votes{font-family:"Saira Condensed",sans-serif;font-size:clamp(18px,2vw,30px);font-weight:800;line-height:1}
+  .pct{font-size:clamp(10px,.95vw,14px);color:var(--muted);margin-top:2px}
+  .flash{animation:flash 1s ease}@keyframes flash{0%{background:var(--safety-soft)}100%{background:var(--panel)}}
+  /* 우: QR */
+  .right{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);
+    padding:clamp(16px,2.2vh,30px) clamp(16px,1.6vw,26px);display:flex;flex-direction:column;align-items:center;text-align:center;min-height:0}
+  .right .scan{font-size:clamp(18px,1.8vw,28px);font-weight:800;line-height:1.2;margin-bottom:4px}
+  .right .scan .cam{color:var(--safety)}
+  .right .scan-sub{font-size:clamp(12px,1.1vw,16px);color:var(--muted);margin-bottom:clamp(14px,2vh,22px)}
+  .qrframe{background:#fff;border-radius:16px;padding:clamp(12px,1.6vw,22px);box-shadow:0 14px 40px rgba(0,0,0,.45);
+    width:clamp(180px,20vw,340px);aspect-ratio:1/1;display:flex;align-items:center;justify-content:center}
+  .qrframe img,.qrframe canvas{width:100%!important;height:100%!important;display:block}
+  .steps{margin-top:clamp(14px,2vh,24px);display:flex;flex-direction:column;gap:clamp(7px,1vh,12px);width:100%;max-width:300px}
+  .step{display:flex;align-items:center;gap:12px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:clamp(8px,1.1vh,12px) 14px;text-align:left}
+  .step .badge{flex:0 0 auto;width:clamp(24px,2.4vw,34px);height:clamp(24px,2.4vw,34px);border-radius:50%;background:var(--safety);color:#fff;font-weight:800;
+    font-size:clamp(13px,1.2vw,18px);display:flex;align-items:center;justify-content:center}
+  .step .t{font-size:clamp(12px,1.1vw,16px);font-weight:600;line-height:1.3}
+  .badge-1p{margin-top:auto;font-size:clamp(12px,1.1vw,16px);color:var(--safety);font-weight:800;background:var(--safety-soft);
+    border:1px solid rgba(31,181,98,.35);border-radius:10px;padding:clamp(8px,1.1vh,12px) 14px;width:100%;max-width:300px}
+  .url-tip{font-size:clamp(9px,.85vw,12px);color:var(--faint);margin-top:10px;word-break:break-all;max-width:300px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="stage">
+  <header class="top">
+    <div>
+      <div class="eyebrow">미원상사 · 안전환경지원팀</div>
+      <h1 class="title" id="hTitle">안전표어 공모 <b>실시간 투표 · 개표</b></h1>
+    </div>
+    <div class="top-right">
+      <span class="status" id="statusBadge"><span class="dot"></span>LIVE</span>
+      <span class="clock num" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- 좌측: 개표 -->
+    <section class="left">
+      <div class="turnbar">
+        <div>
+          <div class="lab">전체 투표율</div>
+          <div class="big"><span class="pct num" id="turnoutPct">0.0</span><span class="sym">%</span></div>
+        </div>
+        <div class="meter"><i id="meterFill"></i></div>
+        <div class="nums">
+          <div class="v num"><span id="votedCount">0</span> / <span id="eligCount">0</span></div>
+          <div class="k">투표 / 대상</div>
+          <div class="ch num"><span class="sm" id="smCount">0</span> 세이프미 · <span class="qr" id="qrCount">0</span> QR</div>
+        </div>
+      </div>
+      <div class="boardwrap">
+        <div class="boardhead">
+          <h2>표어별 득표 현황 <span class="hint">· 득표순 자동 정렬</span></h2>
+          <span class="hint" id="candCount">후보 0</span>
+        </div>
+        <div class="board" id="board"></div>
+      </div>
+    </section>
+
+    <!-- 우측: QR -->
+    <aside class="right">
+      <div class="scan"><span class="cam">📷 휴대폰 카메라</span>로<br>QR을 찍으세요</div>
+      <div class="scan-sub">올해의 안전표어, 여러분의 한 표로!</div>
+      <div class="qrframe"><div id="qr"></div></div>
+      <div class="steps">
+        <div class="step"><div class="badge">1</div><div class="t">QR 스캔 → 투표 페이지 열기</div></div>
+        <div class="step"><div class="badge">2</div><div class="t">이름 입력 후 표어 1개 선택</div></div>
+        <div class="step"><div class="badge">3</div><div class="t">제출하면 옆 화면에 바로 반영!</div></div>
+      </div>
+      <div class="badge-1p" id="onePer">✅ 1인 1표 · 세이프미 앱으로도 투표 가능</div>
+      <div class="url-tip" id="urlTip"></div>
+    </aside>
+  </div>
+</div>
+
+<script type="module">
+import { db, ref, onValue } from "./firebase-setup.js";
+
+/* ── 투표 페이지 주소: 같은 폴더의 vote-qr.html 을 자동으로 가리킴 ── */
+const FALLBACK_URL = "https://sihofather.github.io/Safetymisson/vote-qr.html";
+const VOTE_URL = (location.protocol === "file:") ? FALLBACK_URL : new URL("vote-qr.html", location.href).href;
+
+/* ── QR 생성 ── */
+(function makeQR(){
+  const box = document.getElementById("qr");
+  new QRCode(box, { text: VOTE_URL, width: 600, height: 600, colorDark:"#0A1020", colorLight:"#ffffff", correctLevel: QRCode.CorrectLevel.M });
+  document.getElementById("urlTip").textContent = VOTE_URL;
+})();
+
+/* ── 실시간 개표 ── */
+const view={title:"안전표어 공모",options:[],counts:{},voted:0,scoresCount:0,active:false,src:{safeme:0,qr:0}};
+const seen=new Set();
+const $=s=>document.querySelector(s);
+let nodesById={};
+
+function buildBoard(){const board=$("#board");board.innerHTML="";nodesById={};
+  view.options.forEach(o=>{const row=document.createElement("div");row.className="row";
+    row.innerHTML=`<div class="rank num">-</div><div class="cell"><div class="slo"></div><div class="bar"><i></i></div></div>
+      <div class="stat"><div class="votes num">0</div><div class="pct">0%</div></div>`;
+    board.appendChild(row);nodesById[o]=row;});
+  $("#candCount").textContent="후보 "+view.options.length;}
+
+function rollNumber(el,to,dur=700){const from=parseFloat(el.dataset.v||"0");if(from===to){el.textContent=to.toFixed(1);el.dataset.v=to;return;}
+  const t0=performance.now();function step(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+    el.textContent=(from+(to-from)*e).toFixed(1);if(p<1)requestAnimationFrame(step);else el.dataset.v=to;}
+  el.dataset.v=to;requestAnimationFrame(step);}
+
+function setStatus(){const b=$("#statusBadge");
+  if(view.active){b.className="status";b.innerHTML='<span class="dot"></span>LIVE';}
+  else{b.className="status off";b.innerHTML='<span class="dot"></span>투표 준비 중';}}
+
+function render(animate=true){
+  $("#hTitle").innerHTML=esc(view.title)+' <b>실시간 투표 · 개표</b>';
+  setStatus();
+  const opts=view.options,total=opts.reduce((a,o)=>a+(view.counts[o]||0),0);
+  const elig=Math.max(1,view.scoresCount||1);
+  const turnout=Math.min(100,view.voted/elig*100);
+  rollNumber($("#turnoutPct"),turnout);$("#meterFill").style.width=turnout+"%";
+  $("#votedCount").textContent=view.voted;$("#eligCount").textContent=view.scoresCount;
+  $("#smCount").textContent=view.src.safeme;$("#qrCount").textContent=view.src.qr;
+  const order=opts.slice().sort((a,b)=>((view.counts[b]||0)-(view.counts[a]||0))||(a>b?1:-1));
+  const leadV=order[0]?(view.counts[order[0]]||0):0,maxV=Math.max(1,leadV);
+  const ordered=order.map(o=>nodesById[o]).filter(Boolean);
+  const first=ordered.map(n=>n.getBoundingClientRect().top);
+  const board=$("#board");order.forEach(o=>{if(nodesById[o])board.appendChild(nodesById[o]);});
+  order.forEach((o,rank)=>{const row=nodesById[o];if(!row)return;const v=view.counts[o]||0;
+    row.querySelector(".rank").textContent=rank+1;row.querySelector(".rank").className="rank num"+(rank<3?(" m"+(rank+1)):"");
+    row.querySelector(".slo").textContent=o;row.querySelector(".slo").title=o;
+    row.querySelector(".votes").textContent=v;row.querySelector(".pct").textContent=total?(v/total*100).toFixed(1)+"%":"0%";
+    row.querySelector(".bar > i").style.width=(v/maxV*100)+"%";row.classList.toggle("lead",rank===0&&total>0);});
+  if(animate){const last=ordered.map(n=>n.getBoundingClientRect().top);
+    ordered.forEach((n,i)=>{const dy=first[i]-last[i];if(dy){n.style.transform=`translateY(${dy}px)`;n.style.transition="transform 0s";
+      requestAnimationFrame(()=>{n.style.transition="transform .55s cubic-bezier(.22,1,.36,1)";n.style.transform="";});}});}}
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function flashRow(o){const r=nodesById[o];if(!r)return;r.classList.remove("flash");void r.offsetWidth;r.classList.add("flash");}
+
+function applyVotes(votesObj,firstLoad){
+  const counts={};view.options.forEach(o=>counts[o]=0);let voted=0,src={safeme:0,qr:0};const newcomers=[];
+  for(const name in votesObj){const v=votesObj[name]||{};voted++;const pick=v.selected;if(pick in counts)counts[pick]++;
+    src[v.channel==="qr"?"qr":"safeme"]++;
+    if(!seen.has(name)){seen.add(name);newcomers.push(pick);}}
+  view.counts=counts;view.voted=voted;view.src=src;
+  if(firstLoad){render(false);}else{render();newcomers.forEach(p=>{if(nodesById[p])flashRow(p);});}}
+
+let lastVotes={},votesFirst=true;
+onValue(ref(db,"settings/voting"),snap=>{const d=snap.val()||{};
+  view.title=d.title||view.title;view.active=!!d.isActive;view.options=Array.isArray(d.options)?d.options:[];
+  buildBoard();applyVotes(lastVotes,false);});
+onValue(ref(db,"scores"),snap=>{const d=snap.val()||{};view.scoresCount=Object.keys(d).length;render(false);});
+onValue(ref(db,"votes"),snap=>{const d=snap.val()||{};lastVotes=d;applyVotes(d,votesFirst);votesFirst=false;});
+
+setInterval(()=>{$("#clock").textContent=new Date().toLocaleTimeString("ko-KR",{hour12:false});},1000);
+$("#clock").textContent=new Date().toLocaleTimeString("ko-KR",{hour12:false});
+</script>
+</body>
+</html>
