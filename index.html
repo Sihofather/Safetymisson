@@ -15,6 +15,35 @@
     /* ⭐ 임시 목록(투표) 버튼 스타일 ⭐ */
     .vote-btn { background-color: #ff9800; display: none; } 
     .secret-gear { position: absolute; top: 15px; right: 15px; font-size: 30px; background: none; border: none; cursor: pointer; }
+    /* 제안 현황 대시보드 (인라인, 시스템 폰트) */
+    #pboard{max-width:480px;margin:26px auto 0;text-align:left;font-size:16px}
+    #pboard .p-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:0 4px}
+    #pboard h2{font-size:22px;font-weight:800;margin:0 0 2px;color:#333}
+    #pboard .p-sub{color:#5B6678;font-size:13px}
+    #pboard .p-edit{flex:0 0 auto;font-size:13px;font-weight:800;color:#fff;background:#2563EB;border:0;border-radius:9px;padding:8px 12px;cursor:pointer;white-space:nowrap;margin-top:3px}
+    #pboard .p-tabs{display:flex;gap:8px;margin:14px 0}
+    #pboard .p-tab{flex:1;background:#fff;border:1.5px solid #E6E9EF;border-radius:12px;padding:12px 6px;cursor:pointer;text-align:center}
+    #pboard .p-tab .n{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+    #pboard .p-tab .l{font-size:12px;color:#5B6678;font-weight:700;margin-top:4px}
+    #pboard .p-tab.on{border-color:#D97706;box-shadow:0 0 0 3px rgba(217,119,6,.12)}#pboard .p-tab.on .n{color:#D97706}
+    #pboard .p-tab.wan.on{border-color:#15803D;box-shadow:0 0 0 3px rgba(21,128,61,.12)}#pboard .p-tab.wan.on .n{color:#15803D}
+    #pboard .p-tab.bor.on{border-color:#6B7280;box-shadow:0 0 0 3px rgba(107,114,128,.14)}#pboard .p-tab.bor.on .n{color:#6B7280}
+    #pboard .p-search{width:100%;border:1.5px solid #E6E9EF;border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;outline:none;margin-bottom:12px;box-sizing:border-box}
+    #pboard .p-card{background:#fff;border:1px solid #E6E9EF;border-radius:12px;margin-bottom:8px;overflow:hidden}
+    #pboard .p-head{display:flex;align-items:center;gap:9px;padding:12px 14px;cursor:pointer}
+    #pboard .p-id{font-size:12px;font-weight:800;color:#5B6678;white-space:nowrap}
+    #pboard .p-ttl{font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #pboard .p-team{font-size:12px;color:#5B6678;white-space:nowrap}
+    #pboard .p-badge{font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;white-space:nowrap}
+    #pboard .b-jin{color:#D97706;background:#FDF3E3}#pboard .b-wan{color:#15803D;background:#DCFCE7}#pboard .b-bor{color:#6B7280;background:#EEF0F3}
+    #pboard .p-detail{display:none;border-top:1px solid #E6E9EF;padding:14px;background:#FAFBFD}
+    #pboard .p-card.open .p-detail{display:block}
+    #pboard .p-detail h4{font-size:12px;font-weight:800;color:#5B6678;margin:0 0 6px}
+    #pboard .p-content{white-space:pre-wrap;font-size:14px;line-height:1.5;margin-bottom:14px}
+    #pboard .p-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    #pboard .p-chip{font-size:12px;background:#fff;border:1px solid #E6E9EF;border-radius:8px;padding:6px 9px}
+    #pboard .p-follow{white-space:pre-wrap;font-size:13px;line-height:1.6;background:#fff;border:1px solid #E6E9EF;border-radius:10px;padding:11px;color:#374151}
+    #pboard .p-empty{text-align:center;color:#5B6678;padding:30px 0;font-size:14px}
   </style>
 </head>
 <body>
@@ -30,10 +59,19 @@
   
   <button class="btn msg-btn" onclick="location.href='message.html'">✉️ 1:1 건의함 (쪽지)</button>
 
-  <!-- 제안 현황 대시보드 (항상 표시, 높이 자동조절) -->
-  <section style="margin-top:26px;">
-    <iframe id="proposalsFrame" src="제안현황.html" title="제안 현황" scrolling="no"
-      style="width:100%;max-width:860px;border:0;display:block;margin:0 auto;height:640px;"></iframe>
+  <!-- 제안 현황 대시보드 (인라인, 항상 표시) -->
+  <section id="pboard">
+    <div class="p-h">
+      <div><h2>제안 현황</h2><div class="p-sub">2026년 반월공장 제안 · 조치현황 (실시간)</div></div>
+      <button class="p-edit" onclick="window.open('제안설정.html','_blank')" title="제안 수정 (비밀번호 필요)">✏️ 수정</button>
+    </div>
+    <div class="p-tabs">
+      <div class="p-tab on" data-s="진행중"><div class="n" id="pc-jin">0</div><div class="l">진행중</div></div>
+      <div class="p-tab wan" data-s="완료"><div class="n" id="pc-wan">0</div><div class="l">완료</div></div>
+      <div class="p-tab bor" data-s="보류"><div class="n" id="pc-bor">0</div><div class="l">보류</div></div>
+    </div>
+    <input class="p-search" id="pSearch" placeholder="관리번호·소속·내용 검색">
+    <div id="pList"><div class="p-empty">불러오는 중…</div></div>
   </section>
 
   <section id="suggestionBoard" style="display:none; margin-top:30px; padding-bottom:30px;"></section>
@@ -41,13 +79,34 @@
   <script type="module">
     import { db, ref, onValue } from "./firebase-setup.js";
 
-    // 제안현황 iframe 높이 자동조절 (스크롤 겹침 방지)
-    window.addEventListener('message', (e) => {
-      if (e.data && e.data.proposalsHeight) {
-        const f = document.getElementById('proposalsFrame');
-        if (f) f.style.height = e.data.proposalsHeight + 'px';
-      }
+    // 💡 제안 현황 대시보드 (proposals) — index의 단일 Firebase 연결 재사용
+    let P = [], pTab = "진행중";
+    const pq = s => document.querySelector(s);
+    const pEsc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const pSt = s => (s.review || "").includes("보류") ? "보류" : ((s.done || "").trim() === "완료" ? "완료" : "진행중");
+    const pBadge = st => st === "완료" ? "b-wan" : st === "보류" ? "b-bor" : "b-jin";
+    onValue(ref(db, "proposals"), snap => {
+      const d = snap.val() || {};
+      P = Object.values(d).sort((a, b) => (a.no || 0) - (b.no || 0));
+      const c = { 진행중: 0, 완료: 0, 보류: 0 }; P.forEach(s => c[pSt(s)]++);
+      pq("#pc-jin").textContent = c.진행중; pq("#pc-wan").textContent = c.완료; pq("#pc-bor").textContent = c.보류;
+      pRender();
     });
+    function pRender() {
+      const q = (pq("#pSearch").value || "").replace(/\s+/g, "").toLowerCase();
+      let rows = P.filter(s => pSt(s) === pTab);
+      if (q) rows = rows.filter(s => ((s.mgmtNo || "") + (s.team || "") + (s.title || "") + (s.content || "")).replace(/\s+/g, "").toLowerCase().includes(q));
+      const box = pq("#pList");
+      if (!rows.length) { box.innerHTML = '<div class="p-empty">' + (P.length ? "해당하는 제안이 없습니다." : "등록된 제안이 없습니다.") + '</div>'; return; }
+      box.innerHTML = rows.map(s => { const st = pSt(s); return `<div class="p-card">
+        <div class="p-head"><span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span><span class="p-team">${pEsc(s.team || "")}</span><span class="p-badge ${pBadge(st)}">${st}</span></div>
+        <div class="p-detail"><h4>제안 내용</h4><div class="p-content">${pEsc(s.content || "")}</div>
+          <div class="p-meta"><span class="p-chip">심사결과 <b>${pEsc(s.review || "—")}</b></span><span class="p-chip">시행 <b>${pEsc(s.action || "—")}</b></span><span class="p-chip">완료 <b>${pEsc(s.done || "—")}</b></span></div>
+          <h4>조치현황 (Follow-up)</h4><div class="p-follow">${pEsc(s.followup || "—")}</div></div></div>`; }).join("");
+      box.querySelectorAll(".p-head").forEach(h => h.onclick = () => h.parentElement.classList.toggle("open"));
+    }
+    document.querySelectorAll("#pboard .p-tab").forEach(t => t.onclick = () => { pTab = t.dataset.s; document.querySelectorAll("#pboard .p-tab").forEach(x => x.classList.remove("on")); t.classList.add("on"); pRender(); });
+    pq("#pSearch").oninput = pRender;
 
     // 현수막 마법
     onValue(ref(db, 'settings/banner'), (snap) => {
