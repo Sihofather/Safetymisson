@@ -41,12 +41,19 @@
   .chip b{color:var(--ink)}
   .followup{white-space:pre-wrap;font-size:13.5px;line-height:1.6;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;color:#374151}
   .empty{text-align:center;color:var(--muted);padding:40px 0;font-size:14px}
+  .hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .editbtn{flex:0 0 auto;font-size:13px;font-weight:800;color:#fff;background:var(--blue);border:0;border-radius:9px;padding:8px 12px;cursor:pointer;white-space:nowrap;margin-top:3px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>제안 현황</h1>
-  <div class="sub">2026년 반월공장 제안 · 조치현황 (실시간)</div>
+  <div class="hdr">
+    <div>
+      <h1>제안 현황</h1>
+      <div class="sub">2026년 반월공장 제안 · 조치현황 (실시간)</div>
+    </div>
+    <button class="editbtn" onclick="window.open('제안설정.html','_blank')" title="제안 수정 (비밀번호 필요)">✏️ 수정</button>
+  </div>
   <div class="tabs">
     <div class="tab jin on" data-s="진행중"><div class="n" id="c-jin">0</div><div class="l">진행중</div></div>
     <div class="tab wan" data-s="완료"><div class="n" id="c-wan">0</div><div class="l">완료</div></div>
