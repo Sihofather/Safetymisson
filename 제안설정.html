@@ -36,6 +36,13 @@
   .hidden{display:none}
   .note{font-size:12px;color:var(--muted);background:#F8FAFC;border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:8px}
   .cnt{font-size:13px;color:var(--muted);font-weight:700}
+  .p-tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .p-tab{flex:1;min-width:80px;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:11px 8px;cursor:pointer;font-weight:700;font-size:14px;color:var(--ink)}
+  .p-tab b{font-weight:800;color:var(--muted)}
+  .p-tab.on{border-color:var(--blue);color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.10)}
+  .p-tab.on b{color:var(--blue)}
+  .p-tab.newtab{flex:0 0 auto;color:var(--green);border-color:#BBF7D0}
+  .p-tab.newtab.on{border-color:var(--green);color:var(--green);box-shadow:0 0 0 3px rgba(21,128,61,.12)}
 </style>
 </head>
 <body>
@@ -53,21 +60,42 @@
     <h1>제안 설정 · 조치현황 관리</h1>
     <div class="sub">제안별 심사결과·시행여부·완료여부·조치현황(Follow-up)을 관리합니다.</div>
 
-    <div class="card">
-      <label>엑셀 가져오기 (CSV UTF-8)</label>
-      <div class="toolbar" style="margin-bottom:6px">
-        <input type="file" id="csvFile" accept=".csv" style="flex:1">
-        <button class="primary" id="importBtn">가져오기</button>
-      </div>
-      <div class="note">엑셀에서 <b>파일 ▸ 다른 이름으로 저장 ▸ CSV UTF-8</b>로 저장 후 올리세요. 같은 관리번호는 덮어쓰고, 새 번호는 추가됩니다. (수동 입력한 조치현황이 덮이지 않게 필요한 것만 올리세요)</div>
+    <div class="p-tabs" id="tabs">
+      <button class="p-tab on" data-t="진행중">진행중 <b id="t-jin">0</b></button>
+      <button class="p-tab" data-t="완료">완료 <b id="t-wan">0</b></button>
+      <button class="p-tab" data-t="미진행">미진행 <b id="t-mij">0</b></button>
+      <button class="p-tab newtab" data-t="신규작성">＋ 신규작성</button>
     </div>
 
-    <div class="toolbar">
-      <span class="cnt" id="cnt">0건</span>
-      <input class="search" id="search" placeholder="관리번호·소속·내용 검색">
-      <button class="green" id="addBtn">+ 새 제안</button>
-    </div>
+    <input class="search" id="search" placeholder="관리번호·소속·내용 검색" style="margin-bottom:12px">
     <div id="list"></div>
+
+    <div id="newpane" class="hidden">
+      <div class="card">
+        <h2 style="margin:0 0 12px;font-size:16px">새 제안 작성</h2>
+        <div class="row2">
+          <div><label>관리번호</label><input id="n-mgmt"></div>
+          <div><label>소속</label><input id="n-team" placeholder="예: 생산팀"></div>
+        </div>
+        <div class="mt"><label>제목</label><input id="n-title"></div>
+        <div class="mt"><label>제안 내용</label><textarea id="n-content" rows="4"></textarea></div>
+        <div class="row3 mt">
+          <div><label>심사결과</label><input id="n-review" placeholder="참가/노력/보류…"></div>
+          <div><label>시행여부</label><input id="n-action" placeholder="시행/미시행…"></div>
+          <div><label>완료여부</label><select id="n-done"><option value="">(공란)</option><option value="미완료">미완료</option><option value="완료">완료</option></select></div>
+        </div>
+        <div class="mt"><label>조치현황 / 비고</label><textarea id="n-follow" rows="3" placeholder="26.08.03 접수"></textarea></div>
+        <div class="mt"><button class="green" id="createBtn" style="width:100%">추가</button></div>
+      </div>
+      <div class="card">
+        <label>엑셀 가져오기 (CSV UTF-8)</label>
+        <div class="toolbar" style="margin-bottom:6px">
+          <input type="file" id="csvFile" accept=".csv" style="flex:1">
+          <button class="primary" id="importBtn">가져오기</button>
+        </div>
+        <div class="note">엑셀에서 <b>파일 ▸ 다른 이름으로 저장 ▸ CSV UTF-8</b>로 저장 후 올리세요. 같은 관리번호는 덮어쓰고, 새 번호는 추가됩니다.</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -78,9 +106,9 @@ const PASS="0000"; // ← 배포 전 변경 (관리자 모드와 별개)
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const keyOf=id=>String(id||"").trim().replace(/[.#$/\[\]]/g,"-");
-const statusOf=s=>(s.review||"").includes("보류")?"보류":((s.done||"").trim()==="완료"?"완료":"진행중");
-const badgeOf=st=>st==="완료"?"b-wan":st==="보류"?"b-bor":"b-jin";
-let ITEMS=[];
+const statusOf=s=>{const d=(s.done||"").trim();return d==="완료"?"완료":d==="미완료"?"진행중":"미진행";};
+const badgeOf=st=>st==="완료"?"b-wan":st==="미진행"?"b-bor":"b-jin";
+let ITEMS=[], curTab="진행중";
 
 $("#unlock").onclick=()=>{ if($("#pass").value===PASS){$("#gate").classList.add("hidden");$("#panel").classList.remove("hidden");start();} else Swal.fire('오류','비밀번호가 올바르지 않습니다.','error'); };
 $("#pass").addEventListener("keydown",e=>{if(e.key==="Enter")$("#unlock").click();});
@@ -89,17 +117,30 @@ function start(){
   onValue(ref(db,"proposals"),snap=>{
     const d=snap.val()||{};
     ITEMS=Object.entries(d).map(([k,v])=>({...v,_key:k})).sort((a,b)=>(a.no||0)-(b.no||0));
+    const c={진행중:0,완료:0,미진행:0}; ITEMS.forEach(s=>c[statusOf(s)]++);
+    $("#t-jin").textContent=c.진행중; $("#t-wan").textContent=c.완료; $("#t-mij").textContent=c.미진행;
     render();
   });
 }
+function setTab(t){
+  curTab=t;
+  document.querySelectorAll("#tabs .p-tab").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+  const isNew=t==="신규작성";
+  $("#search").style.display=isNew?"none":"";
+  $("#list").style.display=isNew?"none":"";
+  $("#newpane").classList.toggle("hidden",!isNew);
+  if(isNew && !$("#n-mgmt").value) $("#n-mgmt").value=nextId().id;
+  if(!isNew) render();
+}
+document.querySelectorAll("#tabs .p-tab").forEach(b=>b.onclick=()=>setTab(b.dataset.t));
 
 function render(){
+  if(curTab==="신규작성")return;
   const q=($("#search").value||"").replace(/\s+/g,"").toLowerCase();
-  let rows=ITEMS;
+  let rows=ITEMS.filter(s=>statusOf(s)===curTab);
   if(q) rows=rows.filter(s=>((s.mgmtNo||"")+(s.team||"")+(s.title||"")+(s.content||"")).replace(/\s+/g,"").toLowerCase().includes(q));
-  $("#cnt").textContent=ITEMS.length+"건";
   const box=$("#list");
-  if(!rows.length){box.innerHTML='<div class="card" style="text-align:center;color:var(--muted)">'+(ITEMS.length?"검색 결과가 없습니다.":"등록된 제안이 없습니다. 위에서 엑셀을 가져오거나 새 제안을 추가하세요.")+'</div>';return;}
+  if(!rows.length){box.innerHTML='<div class="card" style="text-align:center;color:var(--muted)">'+(ITEMS.length?"이 상태의 제안이 없습니다.":"등록된 제안이 없습니다. ＋신규작성 탭에서 추가하거나 엑셀을 가져오세요.")+'</div>';return;}
   box.innerHTML=rows.map(s=>{
     const st=statusOf(s),k=esc(s._key);
     return `<div class="card" data-k="${k}">
@@ -140,6 +181,7 @@ async function saveCard(k){
   const orig=ITEMS.find(x=>x._key===k)||{};
   const obj={no:orig.no||0,year:orig.year||2026};
   card.querySelectorAll("[data-f]").forEach(el=>obj[el.getAttribute("data-f")]=el.value.trim());
+  obj.updatedAt=Date.now();
   const newKey=keyOf(obj.mgmtNo)||k;
   try{
     await set(ref(db,"proposals/"+newKey),obj);
@@ -152,12 +194,20 @@ async function delItem(k){
   if(!c.isConfirmed)return;
   await set(ref(db,"proposals/"+k),null);
 }
-$("#addBtn").onclick=async()=>{
-  const maxNo=ITEMS.reduce((m,s)=>Math.max(m,s.no||0),0);
-  const id="BW-2026-"+String(maxNo+1).padStart(3,"0");
-  const {value:mgmtNo}=await Swal.fire({title:'새 제안 관리번호',input:'text',inputValue:id,showCancelButton:true});
-  if(!mgmtNo)return;
-  await set(ref(db,"proposals/"+keyOf(mgmtNo)),{no:maxNo+1,year:2026,mgmtNo,team:"",title:"",content:"",review:"",action:"",followup:"",done:""});
+function nextId(){ const mx=ITEMS.reduce((m,s)=>Math.max(m,s.no||0),0); return {no:mx+1,id:"BW-2026-"+String(mx+1).padStart(3,"0")}; }
+$("#createBtn").onclick=async()=>{
+  const {no,id:auto}=nextId();
+  const mgmtNo=($("#n-mgmt").value||"").trim()||auto;
+  const title=($("#n-title").value||"").trim();
+  if(!title)return Swal.fire('알림','제목을 입력하세요.','warning');
+  const done=$("#n-done").value;
+  await set(ref(db,"proposals/"+keyOf(mgmtNo)),{no,year:2026,mgmtNo,team:$("#n-team").value.trim(),title,
+    content:$("#n-content").value.trim(),review:$("#n-review").value.trim(),action:$("#n-action").value.trim(),
+    done,followup:$("#n-follow").value.trim(),updatedAt:Date.now()});
+  ["n-mgmt","n-team","n-title","n-content","n-review","n-action","n-follow"].forEach(i=>$("#"+i).value="");
+  $("#n-done").value="";
+  await Swal.fire({icon:'success',title:'추가됨',timer:900,showConfirmButton:false});
+  setTab(done==="완료"?"완료":done==="미완료"?"진행중":"미진행");
 };
 $("#search").oninput=render;
 

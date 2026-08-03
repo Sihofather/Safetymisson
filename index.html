@@ -44,6 +44,8 @@
     #pboard .p-chip{font-size:12px;background:#fff;border:1px solid #E6E9EF;border-radius:8px;padding:6px 9px}
     #pboard .p-follow{white-space:pre-wrap;font-size:13px;line-height:1.6;background:#fff;border:1px solid #E6E9EF;border-radius:10px;padding:11px;color:#374151}
     #pboard .p-empty{text-align:center;color:#5B6678;padding:30px 0;font-size:14px}
+    #pboard .p-new{font-size:10px;font-weight:800;color:#fff;background:#EF4444;padding:2px 7px;border-radius:6px;letter-spacing:.04em}
+    #pboard .p-card.isnew{border-color:#FCA5A5;box-shadow:0 0 0 1px #FCA5A5}
   </style>
 </head>
 <body>
@@ -68,7 +70,7 @@
     <div class="p-tabs">
       <div class="p-tab on" data-s="진행중"><div class="n" id="pc-jin">0</div><div class="l">진행중</div></div>
       <div class="p-tab wan" data-s="완료"><div class="n" id="pc-wan">0</div><div class="l">완료</div></div>
-      <div class="p-tab bor" data-s="보류"><div class="n" id="pc-bor">0</div><div class="l">보류</div></div>
+      <div class="p-tab bor" data-s="미진행"><div class="n" id="pc-bor">0</div><div class="l">미진행</div></div>
     </div>
     <input class="p-search" id="pSearch" placeholder="관리번호·소속·내용 검색">
     <div id="pList"><div class="p-empty">불러오는 중…</div></div>
@@ -83,13 +85,14 @@
     let P = [], pTab = "진행중";
     const pq = s => document.querySelector(s);
     const pEsc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-    const pSt = s => (s.review || "").includes("보류") ? "보류" : ((s.done || "").trim() === "완료" ? "완료" : "진행중");
-    const pBadge = st => st === "완료" ? "b-wan" : st === "보류" ? "b-bor" : "b-jin";
+    const pSt = s => { const d = (s.done || "").trim(); return d === "완료" ? "완료" : d === "미완료" ? "진행중" : "미진행"; };
+    const pBadge = st => st === "완료" ? "b-wan" : st === "미진행" ? "b-bor" : "b-jin";
+    const pNew = s => s.updatedAt && (Date.now() - s.updatedAt < 7 * 24 * 3600 * 1000);
     onValue(ref(db, "proposals"), snap => {
       const d = snap.val() || {};
       P = Object.values(d).sort((a, b) => (a.no || 0) - (b.no || 0));
-      const c = { 진행중: 0, 완료: 0, 보류: 0 }; P.forEach(s => c[pSt(s)]++);
-      pq("#pc-jin").textContent = c.진행중; pq("#pc-wan").textContent = c.완료; pq("#pc-bor").textContent = c.보류;
+      const c = { 진행중: 0, 완료: 0, 미진행: 0 }; P.forEach(s => c[pSt(s)]++);
+      pq("#pc-jin").textContent = c.진행중; pq("#pc-wan").textContent = c.완료; pq("#pc-bor").textContent = c.미진행;
       pRender();
     });
     function pRender() {
@@ -98,8 +101,8 @@
       if (q) rows = rows.filter(s => ((s.mgmtNo || "") + (s.team || "") + (s.title || "") + (s.content || "")).replace(/\s+/g, "").toLowerCase().includes(q));
       const box = pq("#pList");
       if (!rows.length) { box.innerHTML = '<div class="p-empty">' + (P.length ? "해당하는 제안이 없습니다." : "등록된 제안이 없습니다.") + '</div>'; return; }
-      box.innerHTML = rows.map(s => { const st = pSt(s); return `<div class="p-card">
-        <div class="p-head"><span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span><span class="p-team">${pEsc(s.team || "")}</span><span class="p-badge ${pBadge(st)}">${st}</span></div>
+      box.innerHTML = rows.map(s => { const st = pSt(s), nw = pNew(s); return `<div class="p-card${nw ? ' isnew' : ''}">
+        <div class="p-head"><span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span>${nw ? '<span class="p-new">NEW</span>' : ''}<span class="p-team">${pEsc(s.team || "")}</span><span class="p-badge ${pBadge(st)}">${st}</span></div>
         <div class="p-detail"><h4>제안 내용</h4><div class="p-content">${pEsc(s.content || "")}</div>
           <div class="p-meta"><span class="p-chip">심사결과 <b>${pEsc(s.review || "—")}</b></span><span class="p-chip">시행 <b>${pEsc(s.action || "—")}</b></span><span class="p-chip">완료 <b>${pEsc(s.done || "—")}</b></span></div>
           <h4>조치현황 (Follow-up)</h4><div class="p-follow">${pEsc(s.followup || "—")}</div></div></div>`; }).join("");

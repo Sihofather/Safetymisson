@@ -43,6 +43,8 @@
   .empty{text-align:center;color:var(--muted);padding:40px 0;font-size:14px}
   .hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
   .editbtn{flex:0 0 auto;font-size:13px;font-weight:800;color:#fff;background:var(--blue);border:0;border-radius:9px;padding:8px 12px;cursor:pointer;white-space:nowrap;margin-top:3px}
+  .newb{font-size:10px;font-weight:800;color:#fff;background:#EF4444;padding:2px 7px;border-radius:6px;letter-spacing:.04em}
+  .card.isnew{border-color:#FCA5A5;box-shadow:0 0 0 1px #FCA5A5}
 </style>
 </head>
 <body>
@@ -57,7 +59,7 @@
   <div class="tabs">
     <div class="tab jin on" data-s="진행중"><div class="n" id="c-jin">0</div><div class="l">진행중</div></div>
     <div class="tab wan" data-s="완료"><div class="n" id="c-wan">0</div><div class="l">완료</div></div>
-    <div class="tab bor" data-s="보류"><div class="n" id="c-bor">0</div><div class="l">보류</div></div>
+    <div class="tab bor" data-s="미진행"><div class="n" id="c-bor">0</div><div class="l">미진행</div></div>
   </div>
   <input class="search" id="search" placeholder="관리번호·소속·내용 검색">
   <div id="list"><div class="empty">불러오는 중…</div></div>
@@ -69,17 +71,18 @@ import { db, ref, onValue } from "./firebase-setup.js";
 let ITEMS=[], tab="진행중";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const statusOf=s=>(s.review||"").includes("보류")?"보류":((s.done||"").trim()==="완료"?"완료":"진행중");
-const badgeOf=st=>st==="완료"?"b-wan":st==="보류"?"b-bor":"b-jin";
+const statusOf=s=>{const d=(s.done||"").trim();return d==="완료"?"완료":d==="미완료"?"진행중":"미진행";};
+const badgeOf=st=>st==="완료"?"b-wan":st==="미진행"?"b-bor":"b-jin";
+const newOf=s=>s.updatedAt&&(Date.now()-s.updatedAt<7*24*3600*1000);
 const postHeight=()=>{ if(window.parent!==window) window.parent.postMessage({proposalsHeight:document.body.scrollHeight+24},"*"); };
 addEventListener("resize",postHeight);
 
 onValue(ref(db,"proposals"),snap=>{
   const d=snap.val()||{};
   ITEMS=Object.values(d).sort((a,b)=>(a.no||0)-(b.no||0));
-  const cnt={진행중:0,완료:0,보류:0};
+  const cnt={진행중:0,완료:0,미진행:0};
   ITEMS.forEach(s=>cnt[statusOf(s)]++);
-  $("#c-jin").textContent=cnt.진행중;$("#c-wan").textContent=cnt.완료;$("#c-bor").textContent=cnt.보류;
+  $("#c-jin").textContent=cnt.진행중;$("#c-wan").textContent=cnt.완료;$("#c-bor").textContent=cnt.미진행;
   render();
 });
 
@@ -90,11 +93,12 @@ function render(){
   const box=$("#list");
   if(!rows.length){ box.innerHTML='<div class="empty">'+(ITEMS.length?"해당하는 제안이 없습니다.":"등록된 제안이 없습니다. (제안설정에서 엑셀을 가져오세요)")+'</div>'; postHeight(); return; }
   box.innerHTML=rows.map(s=>{
-    const st=statusOf(s);
-    return `<div class="card">
+    const st=statusOf(s),nw=newOf(s);
+    return `<div class="card${nw?' isnew':''}">
       <div class="head">
         <span class="id">${esc(s.mgmtNo||"")}</span>
         <span class="ttl">${esc(s.title||"(제목 없음)")}</span>
+        ${nw?'<span class="newb">NEW</span>':''}
         <span class="team">${esc(s.team||"")}</span>
         <span class="badge ${badgeOf(st)}">${st}</span>
         <span class="arw">▸</span>
