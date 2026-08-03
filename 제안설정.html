@@ -86,7 +86,7 @@ $("#unlock").onclick=()=>{ if($("#pass").value===PASS){$("#gate").classList.add(
 $("#pass").addEventListener("keydown",e=>{if(e.key==="Enter")$("#unlock").click();});
 
 function start(){
-  onValue(ref(db,"suggestions"),snap=>{
+  onValue(ref(db,"proposals"),snap=>{
     const d=snap.val()||{};
     ITEMS=Object.entries(d).map(([k,v])=>({...v,_key:k})).sort((a,b)=>(a.no||0)-(b.no||0));
     render();
@@ -142,22 +142,22 @@ async function saveCard(k){
   card.querySelectorAll("[data-f]").forEach(el=>obj[el.getAttribute("data-f")]=el.value.trim());
   const newKey=keyOf(obj.mgmtNo)||k;
   try{
-    await set(ref(db,"suggestions/"+newKey),obj);
-    if(newKey!==k) await set(ref(db,"suggestions/"+k),null); // 관리번호 변경 시 옛 키 제거
+    await set(ref(db,"proposals/"+newKey),obj);
+    if(newKey!==k) await set(ref(db,"proposals/"+k),null); // 관리번호 변경 시 옛 키 제거
     Swal.fire({icon:'success',title:'저장됨',timer:900,showConfirmButton:false});
   }catch(e){console.error(e);Swal.fire('오류','저장 실패','error');}
 }
 async function delItem(k){
   const c=await Swal.fire({icon:'warning',title:'삭제할까요?',text:k,showCancelButton:true,confirmButtonText:'삭제',cancelButtonText:'취소',confirmButtonColor:'#DC2626'});
   if(!c.isConfirmed)return;
-  await set(ref(db,"suggestions/"+k),null);
+  await set(ref(db,"proposals/"+k),null);
 }
 $("#addBtn").onclick=async()=>{
   const maxNo=ITEMS.reduce((m,s)=>Math.max(m,s.no||0),0);
   const id="BW-2026-"+String(maxNo+1).padStart(3,"0");
   const {value:mgmtNo}=await Swal.fire({title:'새 제안 관리번호',input:'text',inputValue:id,showCancelButton:true});
   if(!mgmtNo)return;
-  await set(ref(db,"suggestions/"+keyOf(mgmtNo)),{no:maxNo+1,year:2026,mgmtNo,team:"",title:"",content:"",review:"",action:"",followup:"",done:""});
+  await set(ref(db,"proposals/"+keyOf(mgmtNo)),{no:maxNo+1,year:2026,mgmtNo,team:"",title:"",content:"",review:"",action:"",followup:"",done:""});
 };
 $("#search").oninput=render;
 
@@ -212,7 +212,7 @@ $("#importBtn").onclick=()=>{
       if(!n)return Swal.fire('알림','가져올 데이터 행이 없습니다.','info');
       const c=await Swal.fire({icon:'question',title:`${n}건 가져오기`,text:'같은 관리번호는 덮어쓰고, 새 번호는 추가됩니다.',showCancelButton:true,confirmButtonText:'가져오기',cancelButtonText:'취소'});
       if(!c.isConfirmed)return;
-      await update(ref(db,"suggestions"),map);
+      await update(ref(db,"proposals"),map);
       Swal.fire('완료',`${n}건을 가져왔습니다.`,'success');
     }catch(e){console.error(e);Swal.fire('오류','CSV 파싱 실패: '+e.message,'error');}
   };

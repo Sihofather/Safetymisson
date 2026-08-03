@@ -64,8 +64,10 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const statusOf=s=>(s.review||"").includes("보류")?"보류":((s.done||"").trim()==="완료"?"완료":"진행중");
 const badgeOf=st=>st==="완료"?"b-wan":st==="보류"?"b-bor":"b-jin";
+const postHeight=()=>{ if(window.parent!==window) window.parent.postMessage({proposalsHeight:document.body.scrollHeight+24},"*"); };
+addEventListener("resize",postHeight);
 
-onValue(ref(db,"suggestions"),snap=>{
+onValue(ref(db,"proposals"),snap=>{
   const d=snap.val()||{};
   ITEMS=Object.values(d).sort((a,b)=>(a.no||0)-(b.no||0));
   const cnt={진행중:0,완료:0,보류:0};
@@ -79,7 +81,7 @@ function render(){
   let rows=ITEMS.filter(s=>statusOf(s)===tab);
   if(q) rows=rows.filter(s=>((s.mgmtNo||"")+(s.team||"")+(s.title||"")+(s.content||"")).replace(/\s+/g,"").toLowerCase().includes(q));
   const box=$("#list");
-  if(!rows.length){ box.innerHTML='<div class="empty">'+(ITEMS.length?"해당하는 제안이 없습니다.":"등록된 제안이 없습니다. (제안설정에서 엑셀을 가져오세요)")+'</div>'; return; }
+  if(!rows.length){ box.innerHTML='<div class="empty">'+(ITEMS.length?"해당하는 제안이 없습니다.":"등록된 제안이 없습니다. (제안설정에서 엑셀을 가져오세요)")+'</div>'; postHeight(); return; }
   box.innerHTML=rows.map(s=>{
     const st=statusOf(s);
     return `<div class="card">
@@ -103,7 +105,8 @@ function render(){
       </div>
     </div>`;
   }).join("");
-  box.querySelectorAll(".card .head").forEach(h=>h.onclick=()=>h.parentElement.classList.toggle("open"));
+  box.querySelectorAll(".card .head").forEach(h=>h.onclick=()=>{h.parentElement.classList.toggle("open");postHeight();});
+  postHeight();
 }
 
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{

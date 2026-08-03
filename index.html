@@ -30,11 +30,25 @@
   
   <button class="btn msg-btn" onclick="location.href='message.html'">✉️ 1:1 건의함 (쪽지)</button>
 
+  <!-- 제안 현황 대시보드 (항상 표시, 높이 자동조절) -->
+  <section style="margin-top:26px;">
+    <iframe id="proposalsFrame" src="제안현황.html" title="제안 현황" scrolling="no"
+      style="width:100%;max-width:860px;border:0;display:block;margin:0 auto;height:640px;"></iframe>
+  </section>
+
   <section id="suggestionBoard" style="display:none; margin-top:30px; padding-bottom:30px;"></section>
 
   <script type="module">
     import { db, ref, onValue } from "./firebase-setup.js";
-    
+
+    // 제안현황 iframe 높이 자동조절 (스크롤 겹침 방지)
+    window.addEventListener('message', (e) => {
+      if (e.data && e.data.proposalsHeight) {
+        const f = document.getElementById('proposalsFrame');
+        if (f) f.style.height = e.data.proposalsHeight + 'px';
+      }
+    });
+
     // 현수막 마법
     onValue(ref(db, 'settings/banner'), (snap) => {
       const banner = document.getElementById("noticeBanner");
