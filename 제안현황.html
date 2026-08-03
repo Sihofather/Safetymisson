@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>제안 현황 · 조치현황</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+  :root{--ink:#1A2230;--muted:#5B6678;--line:#E6E9EF;--bg:#F4F6FA;--blue:#2563EB;--green:#15803D;--amber:#D97706;--gray:#6B7280}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;padding:20px 14px 60px}
+  .wrap{max-width:820px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;margin:0 0 3px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{flex:1;min-width:96px;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:12px 10px;cursor:pointer;text-align:center}
+  .tab .n{font-size:24px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .tab .l{font-size:13px;color:var(--muted);font-weight:700;margin-top:4px}
+  .tab.on{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .tab.on .n{color:var(--blue)}
+  .tab.jin.on{border-color:var(--amber);box-shadow:0 0 0 3px rgba(217,119,6,.12)}.tab.jin.on .n{color:var(--amber)}
+  .tab.wan.on{border-color:var(--green);box-shadow:0 0 0 3px rgba(21,128,61,.12)}.tab.wan.on .n{color:var(--green)}
+  .tab.bor.on{border-color:var(--gray);box-shadow:0 0 0 3px rgba(107,114,128,.14)}.tab.bor.on .n{color:var(--gray)}
+  input.search{width:100%;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;outline:none;margin-bottom:14px}
+  input.search:focus{border-color:var(--blue)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:9px;overflow:hidden}
+  .card .head{display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer}
+  .card .id{font-size:12px;font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .card .ttl{font-weight:700;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .b-jin{color:var(--amber);background:#FDF3E3}.b-wan{color:var(--green);background:#DCFCE7}.b-bor{color:var(--gray);background:#EEF0F3}
+  .team{font-size:12px;color:var(--muted);white-space:nowrap}
+  .arw{color:var(--muted);transition:transform .2s}
+  .card.open .arw{transform:rotate(90deg)}
+  .detail{display:none;border-top:1px solid var(--line);padding:15px;background:#FAFBFD}
+  .card.open .detail{display:block}
+  .detail h3{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 6px;letter-spacing:.02em}
+  .detail .content{white-space:pre-wrap;font-size:14px;line-height:1.5;margin-bottom:16px}
+  .meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{font-size:12px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+  .chip b{color:var(--ink)}
+  .followup{white-space:pre-wrap;font-size:13.5px;line-height:1.6;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;color:#374151}
+  .empty{text-align:center;color:var(--muted);padding:40px 0;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>제안 현황</h1>
+  <div class="sub">2026년 반월공장 제안 · 조치현황 (실시간)</div>
+  <div class="tabs">
+    <div class="tab jin on" data-s="진행중"><div class="n" id="c-jin">0</div><div class="l">진행중</div></div>
+    <div class="tab wan" data-s="완료"><div class="n" id="c-wan">0</div><div class="l">완료</div></div>
+    <div class="tab bor" data-s="보류"><div class="n" id="c-bor">0</div><div class="l">보류</div></div>
+  </div>
+  <input class="search" id="search" placeholder="관리번호·소속·내용 검색">
+  <div id="list"><div class="empty">불러오는 중…</div></div>
+</div>
+
+<script type="module">
+import { db, ref, onValue } from "./firebase-setup.js";
+
+let ITEMS=[], tab="진행중";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const statusOf=s=>(s.review||"").includes("보류")?"보류":((s.done||"").trim()==="완료"?"완료":"진행중");
+const badgeOf=st=>st==="완료"?"b-wan":st==="보류"?"b-bor":"b-jin";
+
+onValue(ref(db,"suggestions"),snap=>{
+  const d=snap.val()||{};
+  ITEMS=Object.values(d).sort((a,b)=>(a.no||0)-(b.no||0));
+  const cnt={진행중:0,완료:0,보류:0};
+  ITEMS.forEach(s=>cnt[statusOf(s)]++);
+  $("#c-jin").textContent=cnt.진행중;$("#c-wan").textContent=cnt.완료;$("#c-bor").textContent=cnt.보류;
+  render();
+});
+
+function render(){
+  const q=($("#search").value||"").replace(/\s+/g,"").toLowerCase();
+  let rows=ITEMS.filter(s=>statusOf(s)===tab);
+  if(q) rows=rows.filter(s=>((s.mgmtNo||"")+(s.team||"")+(s.title||"")+(s.content||"")).replace(/\s+/g,"").toLowerCase().includes(q));
+  const box=$("#list");
+  if(!rows.length){ box.innerHTML='<div class="empty">'+(ITEMS.length?"해당하는 제안이 없습니다.":"등록된 제안이 없습니다. (제안설정에서 엑셀을 가져오세요)")+'</div>'; return; }
+  box.innerHTML=rows.map(s=>{
+    const st=statusOf(s);
+    return `<div class="card">
+      <div class="head">
+        <span class="id">${esc(s.mgmtNo||"")}</span>
+        <span class="ttl">${esc(s.title||"(제목 없음)")}</span>
+        <span class="team">${esc(s.team||"")}</span>
+        <span class="badge ${badgeOf(st)}">${st}</span>
+        <span class="arw">▸</span>
+      </div>
+      <div class="detail">
+        <h3>제안 내용</h3>
+        <div class="content">${esc(s.content||"")}</div>
+        <div class="meta">
+          <span class="chip">심사결과 <b>${esc(s.review||"—")}</b></span>
+          <span class="chip">시행여부 <b>${esc(s.action||"—")}</b></span>
+          <span class="chip">완료여부 <b>${esc(s.done||"—")}</b></span>
+        </div>
+        <h3>조치현황 (Follow-up)</h3>
+        <div class="followup">${esc(s.followup||"—")}</div>
+      </div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll(".card .head").forEach(h=>h.onclick=()=>h.parentElement.classList.toggle("open"));
+}
+
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  tab=t.dataset.s;
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+  t.classList.add("on");render();
+});
+$("#search").oninput=render;
+</script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>제안 설정 · 조치현황 관리</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+  :root{--ink:#1A2230;--muted:#5B6678;--line:#E6E9EF;--bg:#F4F6FA;--blue:#2563EB;--green:#15803D;--amber:#D97706;--red:#DC2626;--gray:#6B7280}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;padding:20px 14px 60px}
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;margin:0 0 3px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+  label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:0 0 5px}
+  input,select,textarea{width:100%;background:#fff;border:1.5px solid var(--line);border-radius:9px;color:var(--ink);font-size:14px;font-family:inherit;padding:9px 11px;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--blue)}
+  textarea{resize:vertical;line-height:1.5}
+  button{font-family:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink);font-weight:700;font-size:14px;padding:10px 14px}
+  button.primary{background:var(--blue);color:#fff;border:0}
+  button.green{background:var(--green);color:#fff;border:0}
+  button.danger{background:#fff;color:var(--red);border-color:#FECACA}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .toolbar input.search{flex:1;min-width:160px}
+  .badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px}
+  .b-jin{color:var(--amber);background:#FDF3E3}.b-wan{color:var(--green);background:#DCFCE7}.b-bor{color:var(--gray);background:#EEF0F3}
+  .item-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .item-head .id{font-weight:800;font-size:14px;font-variant-numeric:tabular-nums}
+  .item-head .sp{flex:1}
+  .mt{margin-top:10px}
+  .gate{max-width:380px;margin:60px auto;text-align:center}
+  .hidden{display:none}
+  .note{font-size:12px;color:var(--muted);background:#F8FAFC;border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:8px}
+  .cnt{font-size:13px;color:var(--muted);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="gate" class="gate">
+    <h1>제안 설정</h1><div class="sub">조치현황 관리 도구</div>
+    <div class="card">
+      <label for="pass">비밀번호</label>
+      <input id="pass" type="password" placeholder="비밀번호 입력">
+      <button class="primary" id="unlock" style="width:100%;margin-top:12px">잠금 해제</button>
+    </div>
+  </div>
+
+  <div id="panel" class="hidden">
+    <h1>제안 설정 · 조치현황 관리</h1>
+    <div class="sub">제안별 심사결과·시행여부·완료여부·조치현황(Follow-up)을 관리합니다.</div>
+
+    <div class="card">
+      <label>엑셀 가져오기 (CSV UTF-8)</label>
+      <div class="toolbar" style="margin-bottom:6px">
+        <input type="file" id="csvFile" accept=".csv" style="flex:1">
+        <button class="primary" id="importBtn">가져오기</button>
+      </div>
+      <div class="note">엑셀에서 <b>파일 ▸ 다른 이름으로 저장 ▸ CSV UTF-8</b>로 저장 후 올리세요. 같은 관리번호는 덮어쓰고, 새 번호는 추가됩니다. (수동 입력한 조치현황이 덮이지 않게 필요한 것만 올리세요)</div>
+    </div>
+
+    <div class="toolbar">
+      <span class="cnt" id="cnt">0건</span>
+      <input class="search" id="search" placeholder="관리번호·소속·내용 검색">
+      <button class="green" id="addBtn">+ 새 제안</button>
+    </div>
+    <div id="list"></div>
+  </div>
+</div>
+
+<script type="module">
+import { db, ref, get, set, update, onValue } from "./firebase-setup.js";
+
+const PASS="0000"; // ← 배포 전 변경 (관리자 모드와 별개)
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const keyOf=id=>String(id||"").trim().replace(/[.#$/\[\]]/g,"-");
+const statusOf=s=>(s.review||"").includes("보류")?"보류":((s.done||"").trim()==="완료"?"완료":"진행중");
+const badgeOf=st=>st==="완료"?"b-wan":st==="보류"?"b-bor":"b-jin";
+let ITEMS=[];
+
+$("#unlock").onclick=()=>{ if($("#pass").value===PASS){$("#gate").classList.add("hidden");$("#panel").classList.remove("hidden");start();} else Swal.fire('오류','비밀번호가 올바르지 않습니다.','error'); };
+$("#pass").addEventListener("keydown",e=>{if(e.key==="Enter")$("#unlock").click();});
+
+function start(){
+  onValue(ref(db,"suggestions"),snap=>{
+    const d=snap.val()||{};
+    ITEMS=Object.entries(d).map(([k,v])=>({...v,_key:k})).sort((a,b)=>(a.no||0)-(b.no||0));
+    render();
+  });
+}
+
+function render(){
+  const q=($("#search").value||"").replace(/\s+/g,"").toLowerCase();
+  let rows=ITEMS;
+  if(q) rows=rows.filter(s=>((s.mgmtNo||"")+(s.team||"")+(s.title||"")+(s.content||"")).replace(/\s+/g,"").toLowerCase().includes(q));
+  $("#cnt").textContent=ITEMS.length+"건";
+  const box=$("#list");
+  if(!rows.length){box.innerHTML='<div class="card" style="text-align:center;color:var(--muted)">'+(ITEMS.length?"검색 결과가 없습니다.":"등록된 제안이 없습니다. 위에서 엑셀을 가져오거나 새 제안을 추가하세요.")+'</div>';return;}
+  box.innerHTML=rows.map(s=>{
+    const st=statusOf(s),k=esc(s._key);
+    return `<div class="card" data-k="${k}">
+      <div class="item-head">
+        <span class="id">${esc(s.mgmtNo||s._key)}</span>
+        <span class="badge ${badgeOf(st)}">${st}</span>
+        <span class="sp"></span>
+        <button class="danger" data-del="${k}">삭제</button>
+      </div>
+      <div class="row2">
+        <div><label>소속</label><input data-f="team" value="${esc(s.team||"")}"></div>
+        <div><label>관리번호</label><input data-f="mgmtNo" value="${esc(s.mgmtNo||"")}"></div>
+      </div>
+      <div class="mt"><label>제목</label><input data-f="title" value="${esc(s.title||"")}"></div>
+      <div class="mt"><label>제안 내용</label><textarea data-f="content" rows="4">${esc(s.content||"")}</textarea></div>
+      <div class="row3 mt">
+        <div><label>심사결과</label><input data-f="review" value="${esc(s.review||"")}" placeholder="참가/노력/보류…"></div>
+        <div><label>시행여부</label><input data-f="action" value="${esc(s.action||"")}" placeholder="시행/미시행…"></div>
+        <div><label>완료여부</label>
+          <select data-f="done">
+            <option value=""${!s.done?" selected":""}>(공란)</option>
+            <option value="완료"${(s.done||"").trim()==="완료"?" selected":""}>완료</option>
+            <option value="미완료"${(s.done||"").trim()==="미완료"?" selected":""}>미완료</option>
+          </select>
+        </div>
+      </div>
+      <div class="mt"><label>조치현황 / 비고 (Follow-up · 날짜별로 줄바꿈해서 기록)</label>
+        <textarea data-f="followup" rows="3" placeholder="예:\n26.06.09 견적 확인 후 진행\n26.07.07 대기">${esc(s.followup||"")}</textarea></div>
+      <div class="mt"><button class="primary" data-save="${k}">저장</button></div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>saveCard(b.getAttribute("data-save")));
+  box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>delItem(b.getAttribute("data-del")));
+}
+
+async function saveCard(k){
+  const card=document.querySelector(`.card[data-k="${CSS.escape(k)}"]`);
+  const orig=ITEMS.find(x=>x._key===k)||{};
+  const obj={no:orig.no||0,year:orig.year||2026};
+  card.querySelectorAll("[data-f]").forEach(el=>obj[el.getAttribute("data-f")]=el.value.trim());
+  const newKey=keyOf(obj.mgmtNo)||k;
+  try{
+    await set(ref(db,"suggestions/"+newKey),obj);
+    if(newKey!==k) await set(ref(db,"suggestions/"+k),null); // 관리번호 변경 시 옛 키 제거
+    Swal.fire({icon:'success',title:'저장됨',timer:900,showConfirmButton:false});
+  }catch(e){console.error(e);Swal.fire('오류','저장 실패','error');}
+}
+async function delItem(k){
+  const c=await Swal.fire({icon:'warning',title:'삭제할까요?',text:k,showCancelButton:true,confirmButtonText:'삭제',cancelButtonText:'취소',confirmButtonColor:'#DC2626'});
+  if(!c.isConfirmed)return;
+  await set(ref(db,"suggestions/"+k),null);
+}
+$("#addBtn").onclick=async()=>{
+  const maxNo=ITEMS.reduce((m,s)=>Math.max(m,s.no||0),0);
+  const id="BW-2026-"+String(maxNo+1).padStart(3,"0");
+  const {value:mgmtNo}=await Swal.fire({title:'새 제안 관리번호',input:'text',inputValue:id,showCancelButton:true});
+  if(!mgmtNo)return;
+  await set(ref(db,"suggestions/"+keyOf(mgmtNo)),{no:maxNo+1,year:2026,mgmtNo,team:"",title:"",content:"",review:"",action:"",followup:"",done:""});
+};
+$("#search").oninput=render;
+
+// ── CSV 가져오기 ──
+function parseCSV(text){
+  const rows=[];let row=[],f="",i=0,q=false;
+  text=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+  while(i<text.length){const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i+=2;continue;} q=false;i++;continue;} f+=c;i++;continue;}
+    if(c==='"'){q=true;i++;continue;}
+    if(c===','){row.push(f);f="";i++;continue;}
+    if(c==='\n'){row.push(f);rows.push(row);row=[];f="";i++;continue;}
+    f+=c;i++;}
+  if(f.length||row.length){row.push(f);rows.push(row);}
+  return rows;
+}
+// self-check
+console.assert(JSON.stringify(parseCSV('a,"b,c","d\ne"'))===JSON.stringify([["a","b,c","d\ne"]]),"parseCSV 실패");
+
+function col(headers,names){ for(const n of names){const i=headers.findIndex(h=>h.replace(/\s+/g,"").includes(n));if(i>=0)return i;} return -1; }
+
+$("#importBtn").onclick=()=>{
+  const file=$("#csvFile").files[0];
+  if(!file)return Swal.fire('알림','CSV 파일을 먼저 선택하세요.','warning');
+  const rd=new FileReader();
+  rd.onload=async()=>{
+    try{
+      const rows=parseCSV(rd.result).filter(r=>r.some(c=>c.trim()));
+      // 헤더 행 찾기 (관리번호 포함된 행)
+      let hi=rows.findIndex(r=>r.some(c=>c.replace(/\s+/g,"").includes("관리번호")));
+      if(hi<0)hi=0;
+      const H=rows[hi];
+      const iNo=col(H,["No"]),iYear=col(H,["년"]),iId=col(H,["관리번호"]),iTeam=col(H,["소속"]),
+            iContent=col(H,["제안내용"]),iReview=col(H,["심사결과"]),iAction=col(H,["시행여부"]),
+            iBigo=col(H,["비고"]),iDone=col(H,["완료여부"]);
+      if(iId<0)return Swal.fire('오류','헤더에서 "관리번호" 열을 찾지 못했습니다.','error');
+      const map={};let n=0;
+      for(let r=hi+1;r<rows.length;r++){
+        const R=rows[r];const id=(R[iId]||"").trim();if(!id)continue;
+        const content=(R[iContent]||"").trim();
+        map[keyOf(id)]={
+          no:Number((R[iNo]||"").replace(/\D/g,""))||0,
+          year:Number((R[iYear]||"").replace(/\D/g,""))||2026,
+          mgmtNo:id, team:(R[iTeam]||"").trim(),
+          title:content.split("\n")[0].trim(), content:content,
+          review:iReview>=0?(R[iReview]||"").trim():"",
+          action:iAction>=0?(R[iAction]||"").trim():"",
+          followup:iBigo>=0?(R[iBigo]||"").trim():"",
+          done:iDone>=0?(R[iDone]||"").trim():""
+        };n++;
+      }
+      if(!n)return Swal.fire('알림','가져올 데이터 행이 없습니다.','info');
+      const c=await Swal.fire({icon:'question',title:`${n}건 가져오기`,text:'같은 관리번호는 덮어쓰고, 새 번호는 추가됩니다.',showCancelButton:true,confirmButtonText:'가져오기',cancelButtonText:'취소'});
+      if(!c.isConfirmed)return;
+      await update(ref(db,"suggestions"),map);
+      Swal.fire('완료',`${n}건을 가져왔습니다.`,'success');
+    }catch(e){console.error(e);Swal.fire('오류','CSV 파싱 실패: '+e.message,'error');}
+  };
+  rd.readAsText(file,"utf-8");
+};
+</script>
+</body>
+</html>
