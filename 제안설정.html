@@ -47,6 +47,11 @@
   .cmod-item{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;border-top:1px solid var(--line);padding:8px 0}
   .cmod-item:first-child{border-top:0}
   .cmod-del{padding:5px 10px;font-size:13px;line-height:1;flex:0 0 auto}
+  .ph-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .ph-item{position:relative;display:inline-block}
+  .ph-item img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer}
+  .ph-x{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;padding:0;font-weight:800;line-height:1}
+  .ph-up{display:inline-block;background:#fff;border:1.5px solid var(--blue);color:var(--blue);border-radius:8px;padding:8px 12px;font-weight:700;font-size:13px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -84,9 +89,9 @@
         <div class="mt"><label>제목</label><input id="n-title"></div>
         <div class="mt"><label>제안 내용</label><textarea id="n-content" rows="4"></textarea></div>
         <div class="row3 mt">
-          <div><label>심사결과</label><input id="n-review" placeholder="참가/노력/보류…"></div>
-          <div><label>시행여부</label><input id="n-action" placeholder="시행/미시행…"></div>
-          <div><label>완료여부</label><select id="n-done"><option value="">(공란)</option><option value="미완료">미완료</option><option value="완료">완료</option></select></div>
+          <div><label>심사결과</label><select id="n-review"><option value="">(선택)</option><option>보류</option><option>참가</option><option>노력</option><option>본사 제출</option></select></div>
+          <div><label>시행여부</label><select id="n-action"><option value="">(선택)</option><option>시행</option><option>검토후 시행</option><option>미시행</option></select></div>
+          <div><label>완료여부</label><select id="n-done"><option value="">(선택)</option><option value="미완료">미완료</option><option value="완료">완료</option></select></div>
         </div>
         <div class="mt"><label>조치현황 / 비고</label><textarea id="n-follow" rows="3" placeholder="26.08.03 접수"></textarea></div>
         <div class="mt"><button class="green" id="createBtn" style="width:100%">추가</button></div>
@@ -104,7 +109,7 @@
 </div>
 
 <script type="module">
-import { db, ref, get, set, update, onValue } from "./firebase-setup.js";
+import { db, ref, get, set, update, onValue, storage, sRef, uploadBytes, getDownloadURL } from "./firebase-setup.js";
 
 const PASS="0000"; // ← 배포 전 변경 (관리자 모드와 별개)
 const $=s=>document.querySelector(s);
@@ -112,6 +117,8 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 const keyOf=id=>String(id||"").trim().replace(/[.#$/\[\]]/g,"-");
 const statusOf=s=>{const d=(s.done||"").trim();return d==="완료"?"완료":d==="미완료"?"진행중":"미진행";};
 const badgeOf=st=>st==="완료"?"b-wan":st==="미진행"?"b-bor":"b-jin";
+const OPT_REVIEW=["","보류","참가","노력","본사 제출"], OPT_ACTION=["","시행","검토후 시행","미시행"];
+const optHtml=(opts,val)=>opts.map(o=>`<option value="${esc(o)}"${(val||"")===o?" selected":""}>${o===""?"(선택)":o}</option>`).join("");
 let ITEMS=[], curTab="진행중", COMMENTS={};
 
 $("#unlock").onclick=()=>{ if($("#pass").value===PASS){$("#gate").classList.add("hidden");$("#panel").classList.remove("hidden");start();} else Swal.fire('오류','비밀번호가 올바르지 않습니다.','error'); };
@@ -172,25 +179,47 @@ function render(){
       <div class="mt"><label>제목</label><input data-f="title" value="${esc(s.title||"")}"></div>
       <div class="mt"><label>제안 내용</label><textarea data-f="content" rows="4">${esc(s.content||"")}</textarea></div>
       <div class="row3 mt">
-        <div><label>심사결과</label><input data-f="review" value="${esc(s.review||"")}" placeholder="참가/노력/보류…"></div>
-        <div><label>시행여부</label><input data-f="action" value="${esc(s.action||"")}" placeholder="시행/미시행…"></div>
+        <div><label>심사결과</label><select data-f="review">${optHtml(OPT_REVIEW,s.review)}</select></div>
+        <div><label>시행여부</label><select data-f="action">${optHtml(OPT_ACTION,s.action)}</select></div>
         <div><label>완료여부</label>
           <select data-f="done">
-            <option value=""${!s.done?" selected":""}>(공란)</option>
-            <option value="완료"${(s.done||"").trim()==="완료"?" selected":""}>완료</option>
+            <option value=""${!s.done?" selected":""}>(선택)</option>
             <option value="미완료"${(s.done||"").trim()==="미완료"?" selected":""}>미완료</option>
+            <option value="완료"${(s.done||"").trim()==="완료"?" selected":""}>완료</option>
           </select>
         </div>
       </div>
       <div class="mt"><label>조치현황 / 비고 (Follow-up · 날짜별로 줄바꿈해서 기록)</label>
         <textarea data-f="followup" rows="3" placeholder="예:\n26.06.09 견적 확인 후 진행\n26.07.07 대기">${esc(s.followup||"")}</textarea></div>
+      <div class="mt"><label>📷 사진</label>
+        <div class="ph-wrap">${(s.photos||[]).map((u,i)=>`<span class="ph-item"><img src="${esc(u)}" data-view="${esc(u)}"><button class="danger ph-x" data-rm="${i}" data-k="${k}">×</button></span>`).join("")}</div>
+        <label class="ph-up">＋ 사진 추가<input type="file" accept="image/*" multiple class="ph-file" data-k="${k}" hidden></label>
+      </div>
       <div class="mt"><button class="primary" data-save="${k}">저장</button></div>
       <div class="cmod mt"><label>💬 댓글 (<span class="cmod-n">0</span>)</label><div class="cmod-list"></div></div>
     </div>`;
   }).join("");
   box.querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>saveCard(b.getAttribute("data-save")));
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>delItem(b.getAttribute("data-del")));
+  box.querySelectorAll(".ph-file").forEach(inp=>inp.onchange=()=>uploadPhotos(inp));
+  box.querySelectorAll(".ph-x").forEach(b=>b.onclick=()=>removePhoto(b.dataset.k,+b.dataset.rm));
+  box.querySelectorAll("[data-view]").forEach(img=>img.onclick=()=>window.open(img.dataset.view,"_blank"));
   renderComments();
+}
+async function uploadPhotos(inp){
+  const k=inp.dataset.k, files=[...inp.files]; if(!files.length)return;
+  const item=ITEMS.find(x=>x._key===k)||{}; const lbl=inp.parentElement; lbl.firstChild.textContent="업로드 중…";
+  try{
+    const urls=[];
+    for(const f of files){ const r=sRef(storage,"proposalPhotos/"+k+"/"+Date.now()+"_"+f.name); await uploadBytes(r,f); urls.push(await getDownloadURL(r)); }
+    await set(ref(db,"proposals/"+k+"/photos"),(item.photos||[]).concat(urls));
+    await set(ref(db,"proposals/"+k+"/updatedAt"),Date.now());
+  }catch(e){ console.error(e); Swal.fire('오류','사진 업로드 실패','error'); lbl.firstChild.textContent="＋ 사진 추가"; }
+}
+async function removePhoto(k,i){
+  const c=await Swal.fire({icon:'warning',title:'사진 삭제',showCancelButton:true,confirmButtonText:'삭제',cancelButtonText:'취소',confirmButtonColor:'#DC2626'}); if(!c.isConfirmed)return;
+  const item=ITEMS.find(x=>x._key===k)||{}; const ph=(item.photos||[]).slice(); ph.splice(i,1);
+  await set(ref(db,"proposals/"+k+"/photos"),ph.length?ph:null);
 }
 
 async function saveCard(k){

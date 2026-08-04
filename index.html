@@ -60,6 +60,24 @@
     #pboard .pcm-text{flex:1;min-width:120px;border:1px solid #E6E9EF;border-radius:8px;padding:8px;font-size:13px;font-family:inherit;outline:none}
     #pboard .pcm-send{flex:0 0 auto;background:#2563EB;color:#fff;border:0;border-radius:8px;padding:8px 13px;font-weight:700;font-size:13px;cursor:pointer}
     #pboard .pcm-send:disabled{opacity:.5}
+    #pboard .p-tab.settab{flex:0 0 auto;padding:8px 12px}
+    #pboard .p-tab.settab .n{font-size:18px}
+    #pboard .p-photos{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+    #pboard .p-photo{width:88px;height:88px;object-fit:cover;border-radius:8px;border:1px solid #E6E9EF;cursor:pointer}
+    #pboard .ef{background:#F1F5FF;border:1px solid #C7D7FE;border-radius:10px;padding:12px;margin-top:6px}
+    #pboard .ef label{display:block;font-size:12px;color:#334;font-weight:700;margin-bottom:10px}
+    #pboard .ef-row{display:flex;gap:8px;flex-wrap:wrap}
+    #pboard .ef-row label{flex:1;min-width:100px}
+    #pboard .ef select,#pboard .ef textarea{width:100%;border:1.5px solid #C7D7FE;border-radius:8px;padding:8px;font-size:14px;font-family:inherit;margin-top:4px;outline:none}
+    #pboard .ef-photos{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+    #pboard .ef-ph{position:relative;display:inline-block}
+    #pboard .ef-ph img{width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #C7D7FE}
+    #pboard .ef-ph-x{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:0;background:#EF4444;color:#fff;font-weight:800;cursor:pointer;line-height:1}
+    #pboard .ef-actions{display:flex;gap:8px;align-items:center}
+    #pboard .ef-up{background:#fff;border:1.5px solid #2563EB;color:#2563EB;border-radius:8px;padding:8px 12px;font-weight:700;font-size:13px;cursor:pointer;margin:0!important}
+    #pboard .ef-save{background:#15803D;color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:800;font-size:14px;cursor:pointer}
+    #pboard .ef-save:disabled{opacity:.5}
+    #pboard .p-card.editing{border-color:#93B4FE}
   </style>
 </head>
 <body>
@@ -79,12 +97,13 @@
   <section id="pboard">
     <div class="p-h">
       <div><h2>제안 현황</h2><div class="p-sub">2026년 반월공장 제안 · 조치현황 (실시간)</div></div>
-      <button class="p-edit" onclick="window.open('제안설정.html','_blank')" title="제안 수정 (비밀번호 필요)">✏️ 수정</button>
+      <button class="p-edit" id="pEdit" title="현재 화면에서 수정 (비밀번호 0000)">✏️ 수정</button>
     </div>
     <div class="p-tabs">
       <div class="p-tab on" data-s="진행중"><div class="n" id="pc-jin">0</div><div class="l">진행중</div></div>
       <div class="p-tab wan" data-s="완료"><div class="n" id="pc-wan">0</div><div class="l">완료</div></div>
       <div class="p-tab bor" data-s="미진행"><div class="n" id="pc-bor">0</div><div class="l">미진행</div></div>
+      <div class="p-tab settab" data-s="제안설정"><div class="n">⚙️</div><div class="l">제안설정</div></div>
     </div>
     <input class="p-search" id="pSearch" placeholder="관리번호·소속·내용 검색">
     <div id="pList"><div class="p-empty">불러오는 중…</div></div>
@@ -93,16 +112,18 @@
   <section id="suggestionBoard" style="display:none; margin-top:30px; padding-bottom:30px;"></section>
 
   <script type="module">
-    import { db, ref, onValue, get, push } from "./firebase-setup.js";
+    import { db, ref, onValue, get, push, set, storage, sRef, uploadBytes, getDownloadURL } from "./firebase-setup.js";
 
     // 💡 제안 현황 대시보드 (proposals) — index의 단일 Firebase 연결 재사용
-    let P = [], pTab = "진행중";
+    let P = [], pTab = "진행중", editMode = false;
     const pq = s => document.querySelector(s);
     const pEsc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     const pSt = s => { const d = (s.done || "").trim(); return d === "완료" ? "완료" : d === "미완료" ? "진행중" : "미진행"; };
     const pBadge = st => st === "완료" ? "b-wan" : st === "미진행" ? "b-bor" : "b-jin";
     const pNew = s => s.updatedAt && (Date.now() - s.updatedAt < 7 * 24 * 3600 * 1000);
     const ckey = m => String(m).replace(/[.#$/\[\]]/g, "-");
+    const OPT_REVIEW = ["", "보류", "참가", "노력", "본사 제출"], OPT_ACTION = ["", "시행", "검토후 시행", "미시행"], OPT_DONE = ["", "미완료", "완료"];
+    const optHtml = (opts, val) => opts.map(o => `<option value="${pEsc(o)}"${(val || "") === o ? " selected" : ""}>${o === "" ? "(선택)" : o}</option>`).join("");
     let COMMENTS = {}, openKeys = new Set();
     onValue(ref(db, "proposals"), snap => {
       const d = snap.val() || {};
@@ -112,6 +133,7 @@
       pRender();
     });
     onValue(ref(db, "pcomments"), snap => { COMMENTS = snap.val() || {}; pRender(); });
+    function photosView(s) { const ph = s.photos || []; return ph.length ? `<h4>사진</h4><div class="p-photos">${ph.map(u => `<img class="p-photo" src="${pEsc(u)}" loading="lazy">`).join("")}</div>` : ""; }
     function pRender() {
       const q = (pq("#pSearch").value || "").replace(/\s+/g, "").toLowerCase();
       let rows = P.filter(s => pSt(s) === pTab);
@@ -121,34 +143,80 @@
       box.innerHTML = rows.map(s => { const st = pSt(s), nw = pNew(s), k = s._key;
         const cents = Object.entries(COMMENTS[k] || {}).sort((a, b) => a[0] < b[0] ? -1 : 1), cc = cents.length;
         const clist = cc ? cents.map(([, c]) => `<div class="pcm-item"><span class="pcm-nm">${pEsc(c.name)}</span><span class="pcm-tm">${pEsc(c.time)}</span><div class="pcm-tx">${pEsc(c.text)}</div></div>`).join("") : '<div class="pcm-empty">첫 댓글을 남겨보세요. (실명 입력)</div>';
-        return `<div class="p-card${nw ? ' isnew' : ''}${openKeys.has(k) ? ' open' : ''}" data-k="${pEsc(k)}">
-        <div class="p-head"><span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span>${nw ? '<span class="p-new">NEW</span>' : ''}${cc ? `<span class="p-cc">💬 ${cc}</span>` : ''}<span class="p-team">${pEsc(s.team || "")}</span><span class="p-badge ${pBadge(st)}">${st}</span></div>
-        <div class="p-detail"><h4>제안 내용</h4><div class="p-content">${pEsc(s.content || "")}</div>
-          <div class="p-meta"><span class="p-chip">심사결과 <b>${pEsc(s.review || "—")}</b></span><span class="p-chip">시행 <b>${pEsc(s.action || "—")}</b></span><span class="p-chip">완료 <b>${pEsc(s.done || "—")}</b></span></div>
-          <h4>조치현황 (Follow-up)</h4><div class="p-follow">${pEsc(s.followup || "—")}</div>
+        const editBox = editMode ? `<div class="ef">
+            <div class="ef-row">
+              <label>심사결과<select data-f="review">${optHtml(OPT_REVIEW, s.review)}</select></label>
+              <label>시행<select data-f="action">${optHtml(OPT_ACTION, s.action)}</select></label>
+              <label>완료<select data-f="done">${optHtml(OPT_DONE, s.done)}</select></label>
+            </div>
+            <label>조치현황 (Follow-up · 날짜별로 줄바꿈)<textarea data-f="followup" rows="4">${pEsc(s.followup || "")}</textarea></label>
+            <div class="ef-photos">${(s.photos || []).map((u, i) => `<span class="ef-ph"><img src="${pEsc(u)}"><button class="ef-ph-x" data-rm="${i}">×</button></span>`).join("")}</div>
+            <div class="ef-actions"><label class="ef-up">📷 사진 추가<input type="file" accept="image/*" multiple class="ef-file" hidden></label><button class="ef-save">저장</button></div>
+          </div>` : "";
+        const viewBox = editMode ? "" : `<div class="p-meta"><span class="p-chip">심사결과 <b>${pEsc(s.review || "—")}</b></span><span class="p-chip">시행 <b>${pEsc(s.action || "—")}</b></span><span class="p-chip">완료 <b>${pEsc(s.done || "—")}</b></span></div>
+          <h4>조치현황 (Follow-up)</h4><div class="p-follow">${pEsc(s.followup || "—")}</div>${photosView(s)}
           <h4>댓글 ${cc}</h4><div class="pcm-list">${clist}</div>
-          <div class="pcm-form"><input class="pcm-name" placeholder="이름(실명)" maxlength="20"><input class="pcm-text" placeholder="댓글 입력" maxlength="200"><button class="pcm-send">등록</button></div>
-        </div></div>`; }).join("");
+          <div class="pcm-form"><input class="pcm-name" placeholder="이름(실명)" maxlength="20"><input class="pcm-text" placeholder="댓글 입력" maxlength="200"><button class="pcm-send">등록</button></div>`;
+        return `<div class="p-card${nw ? ' isnew' : ''}${openKeys.has(k) ? ' open' : ''}${editMode ? ' editing' : ''}" data-k="${pEsc(k)}">
+          <div class="p-head"><span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span>${nw ? '<span class="p-new">NEW</span>' : ''}${cc ? `<span class="p-cc">💬 ${cc}</span>` : ''}<span class="p-team">${pEsc(s.team || "")}</span><span class="p-badge ${pBadge(st)}">${st}</span></div>
+          <div class="p-detail"><h4>제안 내용</h4><div class="p-content">${pEsc(s.content || "")}</div>${editBox}${viewBox}</div>
+        </div>`; }).join("");
       box.querySelectorAll(".p-card").forEach(card => {
-        const k = card.dataset.k;
+        const k = card.dataset.k, item = P.find(x => x._key === k) || {};
         card.querySelector(".p-head").onclick = () => { card.classList.toggle("open"); card.classList.contains("open") ? openKeys.add(k) : openKeys.delete(k); };
-        card.querySelector(".pcm-send").onclick = async () => {
-          const nameEl = card.querySelector(".pcm-name"), textEl = card.querySelector(".pcm-text"), btn = card.querySelector(".pcm-send");
-          const name = nameEl.value.trim(), text = textEl.value.trim();
-          if (!name) return alert("이름을 입력하세요.");
-          if (!text) return alert("댓글 내용을 입력하세요.");
-          btn.disabled = true;
-          try {
-            const ok = await get(ref(db, "scores/" + name));
-            if (!ok.exists()) { alert("등록되지 않은 이름입니다.\n명부에 있는 실명으로 입력해 주세요."); btn.disabled = false; return; }
-            await push(ref(db, "pcomments/" + ckey(k)), { name, text, time: new Date().toLocaleString("ko-KR") });
-            textEl.value = ""; openKeys.add(k);
-          } catch (e) { alert("등록 실패. 다시 시도해 주세요."); }
-          btn.disabled = false;
-        };
+        card.querySelectorAll(".p-photo").forEach(img => img.onclick = () => openImageModal(img.src, "제안 사진"));
+        if (editMode) {
+          const sv = card.querySelector(".ef-save");
+          if (sv) sv.onclick = async () => {
+            const obj = { ...item }; delete obj._key;
+            card.querySelectorAll("[data-f]").forEach(el => obj[el.getAttribute("data-f")] = el.value);
+            obj.updatedAt = Date.now(); sv.disabled = true;
+            try { await set(ref(db, "proposals/" + k), obj); } catch (e) { alert("저장 실패"); }
+            sv.disabled = false;
+          };
+          const fi = card.querySelector(".ef-file");
+          if (fi) fi.onchange = async () => {
+            const files = [...fi.files]; if (!files.length) return;
+            const up = card.querySelector(".ef-up"); up.textContent = "업로드 중…";
+            try {
+              const urls = [];
+              for (const f of files) { const r = sRef(storage, "proposalPhotos/" + k + "/" + Date.now() + "_" + f.name); await uploadBytes(r, f); urls.push(await getDownloadURL(r)); }
+              openKeys.add(k);
+              await set(ref(db, "proposals/" + k + "/photos"), (item.photos || []).concat(urls));
+              await set(ref(db, "proposals/" + k + "/updatedAt"), Date.now());
+            } catch (e) { alert("사진 업로드 실패"); up.innerHTML = "📷 사진 추가"; }
+          };
+          card.querySelectorAll(".ef-ph-x").forEach(b => b.onclick = async () => {
+            const ph = (item.photos || []).slice(); ph.splice(+b.dataset.rm, 1); openKeys.add(k);
+            await set(ref(db, "proposals/" + k + "/photos"), ph.length ? ph : null);
+          });
+        } else {
+          card.querySelector(".pcm-send").onclick = async () => {
+            const nameEl = card.querySelector(".pcm-name"), textEl = card.querySelector(".pcm-text"), btn = card.querySelector(".pcm-send");
+            const name = nameEl.value.trim(), text = textEl.value.trim();
+            if (!name) return alert("이름을 입력하세요.");
+            if (!text) return alert("댓글 내용을 입력하세요.");
+            btn.disabled = true;
+            try {
+              const ok = await get(ref(db, "scores/" + name));
+              if (!ok.exists()) { alert("등록되지 않은 이름입니다.\n명부에 있는 실명으로 입력해 주세요."); btn.disabled = false; return; }
+              await push(ref(db, "pcomments/" + ckey(k)), { name, text, time: new Date().toLocaleString("ko-KR") });
+              textEl.value = ""; openKeys.add(k);
+            } catch (e) { alert("등록 실패. 다시 시도해 주세요."); }
+            btn.disabled = false;
+          };
+        }
       });
     }
-    document.querySelectorAll("#pboard .p-tab").forEach(t => t.onclick = () => { pTab = t.dataset.s; document.querySelectorAll("#pboard .p-tab").forEach(x => x.classList.remove("on")); t.classList.add("on"); pRender(); });
+    document.querySelectorAll("#pboard .p-tab").forEach(t => t.onclick = () => {
+      if (t.dataset.s === "제안설정") { window.open("제안설정.html", "_blank"); return; }
+      pTab = t.dataset.s; document.querySelectorAll("#pboard .p-tab:not(.settab)").forEach(x => x.classList.toggle("on", x === t)); pRender();
+    });
+    pq("#pEdit").onclick = () => {
+      if (!editMode) { if (prompt("수정 암호를 입력하세요") !== "0000") return; editMode = true; pq("#pEdit").textContent = "✔ 수정 완료"; }
+      else { editMode = false; pq("#pEdit").textContent = "✏️ 수정"; }
+      pRender();
+    };
     pq("#pSearch").oninput = pRender;
 
     // 현수막 마법

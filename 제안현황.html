@@ -44,6 +44,8 @@
   .hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
   .editbtn{flex:0 0 auto;font-size:13px;font-weight:800;color:#fff;background:var(--blue);border:0;border-radius:9px;padding:8px 12px;cursor:pointer;white-space:nowrap;margin-top:3px}
   .newb{font-size:10px;font-weight:800;color:#fff;background:#EF4444;padding:2px 7px;border-radius:6px;letter-spacing:.04em}
+  .hy-photos{display:flex;flex-wrap:wrap;gap:8px}
+  .hy-photo{width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer}
   .card.isnew{border-color:#FCA5A5;box-shadow:0 0 0 1px #FCA5A5}
 </style>
 </head>
@@ -113,6 +115,7 @@ function render(){
         </div>
         <h3>조치현황 (Follow-up)</h3>
         <div class="followup">${esc(s.followup||"—")}</div>
+        ${(s.photos&&s.photos.length)?`<h3>사진</h3><div class="hy-photos">${s.photos.map(u=>`<img class="hy-photo" src="${esc(u)}" loading="lazy" onclick="window.open(this.src,'_blank')">`).join("")}</div>`:""}
       </div>
     </div>`;
   }).join("");
