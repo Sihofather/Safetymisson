@@ -23,7 +23,7 @@
   .tab.bor.on{border-color:var(--gray);box-shadow:0 0 0 3px rgba(107,114,128,.14)}.tab.bor.on .n{color:var(--gray)}
   input.search{width:100%;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;outline:none;margin-bottom:14px}
   input.search:focus{border-color:var(--blue)}
-  .card{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:9px;overflow:hidden}
+  .card{position:relative;background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:9px;overflow:hidden}
   .card .head{display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer}
   .card .id{font-size:12px;font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
   .card .ttl{font-weight:700;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -43,7 +43,8 @@
   .empty{text-align:center;color:var(--muted);padding:40px 0;font-size:14px}
   .hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
   .editbtn{flex:0 0 auto;font-size:13px;font-weight:800;color:#fff;background:var(--blue);border:0;border-radius:9px;padding:8px 12px;cursor:pointer;white-space:nowrap;margin-top:3px}
-  .newb{flex:0 0 auto;font-size:10px;font-weight:900;letter-spacing:.04em;color:#5A4200;background:linear-gradient(180deg,#FFE47A,#F4C20D);border:1px solid #E0A800;padding:2px 7px;border-radius:6px;box-shadow:0 1px 2px rgba(180,140,0,.35)}
+  .newb{position:absolute;top:12px;left:-32px;width:112px;transform:rotate(-45deg);background:linear-gradient(180deg,#FFE066,#EAB308);color:#5A4200;font-size:10px;font-weight:900;letter-spacing:.1em;text-align:center;padding:3px 0;box-shadow:0 2px 4px rgba(0,0,0,.25);z-index:3}
+  .card.isnew .head{padding-left:40px}
   .hy-photos{display:flex;flex-wrap:wrap;gap:8px}
   .hy-photo{width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer}
   .pg{margin-bottom:8px}.pg-l{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:4px}
@@ -79,7 +80,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const statusOf=s=>{const d=(s.done||"").trim();return d==="완료"?"완료":d==="미완료"?"진행중":"미진행";};
 const badgeOf=st=>st==="완료"?"b-wan":st==="미진행"?"b-bor":"b-jin";
-const newOf=s=>s.updatedAt&&(Date.now()-s.updatedAt<7*24*3600*1000);
+const newOf=s=>{const today=new Date();today.setHours(0,0,0,0);return (String(s.followup||"").match(/\d{2}\.\d{2}\.\d{2}|\d{6}/g)||[]).some(t=>{const p=t.includes(".")?t.split("."):[t.slice(0,2),t.slice(2,4),t.slice(4,6)];const mo=+p[1];if(mo<1||mo>12)return false;const d=new Date(2000+ +p[0],mo-1,+p[2]);d.setHours(0,0,0,0);const diff=(today-d)/86400000;return diff>=0&&diff<=7;});};
 const normPh=p=>typeof p==="string"?{url:p,kind:"before"}:p;
 function photoGroups(s){const ph=(s.photos||[]).map(normPh);if(!ph.length)return"";const grp=(kind,label)=>{const a=ph.filter(p=>(p.kind||"before")===kind);return a.length?`<div class="pg"><div class="pg-l">${label}</div><div class="hy-photos">${a.map(p=>`<img class="hy-photo" src="${esc(p.url)}" loading="lazy" onclick="window.open(this.src,'_blank')">`).join("")}</div></div>`:"";};return `<h3>사진</h3>${grp("before","조치 전")}${grp("after","조치 후")}`;}
 function targetMD(line){const yy=new Date().getFullYear()%100,cands=[];let m;const rQ=/([1-4])\s*분기/g;while((m=rQ.exec(line)))cands.push({mo:[3,6,9,12][+m[1]-1],dd:[31,30,30,31][+m[1]-1],pos:m.index});const rM=/(\d{1,2})\s*월/g;while((m=rM.exec(line))){const mo=+m[1];if(mo>=1&&mo<=12)cands.push({mo,dd:new Date(2000+yy,mo,0).getDate(),pos:m.index});}if(!cands.length)return null;const impl=[...line.matchAll(/시행|진행|설치|완료|예정|교체|보완/g)].map(x=>x.index);let best=null;for(const c of cands)for(const ip of impl)if(ip>=c.pos){const g=ip-c.pos;if(!best||g<best.g)best={c,g};}return best?best.c:cands[cands.length-1];}
@@ -104,9 +105,8 @@ function render(){
   if(!rows.length){ box.innerHTML='<div class="empty">'+(ITEMS.length?"해당하는 제안이 없습니다.":"등록된 제안이 없습니다. (제안설정에서 엑셀을 가져오세요)")+'</div>'; postHeight(); return; }
   box.innerHTML=rows.map(s=>{
     const st=statusOf(s),nw=newOf(s),dd=st==="완료"?null:ddayOf(s);
-    return `<div class="card${nw?' isnew':''}">
+    return `<div class="card${nw?' isnew':''}">${nw?'<span class="newb">NEW</span>':''}
       <div class="head">
-        ${nw?'<span class="newb">NEW</span>':''}
         <span class="id">${esc(s.mgmtNo||"")}</span>
         <span class="ttl">${esc(s.title||"(제목 없음)")}</span>
         ${dd?(dd.kind==="date"?`<span class="dday${dd.days<0?' over':''}">${dd.days>=0?"D-"+dd.days:"D+"+(-dd.days)}</span>`:`<span class="dday txt ${dd.tone}">${esc(dd.label)}</span>`):''}
