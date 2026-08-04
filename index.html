@@ -78,6 +78,17 @@
     #pboard .ef-save{background:#15803D;color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:800;font-size:14px;cursor:pointer}
     #pboard .ef-save:disabled{opacity:.5}
     #pboard .p-card.editing{border-color:#93B4FE}
+    #pboard .ef-note{font-size:12px;color:#5B6678;margin:8px 0}
+    #pboard .p-dday{font-size:11px;font-weight:800;color:#B45309;background:#FEF3C7;padding:2px 8px;border-radius:999px;white-space:nowrap}
+    #pboard .p-dday.over{color:#991B1B;background:#FEE2E2}
+    #pboard .pg{margin-bottom:8px}
+    #pboard .pg-l{font-size:12px;font-weight:800;color:#5B6678;margin-bottom:4px}
+    #pboard .fu-add{display:flex;gap:6px;margin-top:8px}
+    #pboard .fu-date{flex:0 0 72px;border:1.5px solid #C7D7FE;border-radius:8px;padding:8px;font-size:13px;font-family:inherit;outline:none}
+    #pboard .fu-text{flex:1;min-width:80px;border:1.5px solid #C7D7FE;border-radius:8px;padding:8px;font-size:13px;font-family:inherit;outline:none}
+    #pboard .fu-btn{flex:0 0 auto;background:#2563EB;color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:700;font-size:13px;cursor:pointer}
+    #pboard .p-editbtn{background:#2563EB;color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer}
+    #pboard .ef-cancel{background:#fff;border:1px solid #E6E9EF;border-radius:8px;padding:9px 14px;font-weight:700;font-size:14px;cursor:pointer}
   </style>
 </head>
 <body>
@@ -112,10 +123,10 @@
   <section id="suggestionBoard" style="display:none; margin-top:30px; padding-bottom:30px;"></section>
 
   <script type="module">
-    import { db, ref, onValue, get, push, set, storage, sRef, uploadBytes, getDownloadURL } from "./firebase-setup.js";
+    import { db, ref, onValue, get, push, set } from "./firebase-setup.js";
 
     // 💡 제안 현황 대시보드 (proposals) — index의 단일 Firebase 연결 재사용
-    let P = [], pTab = "진행중", editMode = false;
+    let P = [], pTab = "진행중", unlocked = false;
     const pq = s => document.querySelector(s);
     const pEsc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     const pSt = s => { const d = (s.done || "").trim(); return d === "완료" ? "완료" : d === "미완료" ? "진행중" : "미진행"; };
@@ -124,7 +135,7 @@
     const ckey = m => String(m).replace(/[.#$/\[\]]/g, "-");
     const OPT_REVIEW = ["", "보류", "참가", "노력", "본사 제출"], OPT_ACTION = ["", "시행", "검토후 시행", "미시행"], OPT_DONE = ["", "미완료", "완료"];
     const optHtml = (opts, val) => opts.map(o => `<option value="${pEsc(o)}"${(val || "") === o ? " selected" : ""}>${o === "" ? "(선택)" : o}</option>`).join("");
-    let COMMENTS = {}, openKeys = new Set();
+    let COMMENTS = {}, openKeys = new Set(), editingKeys = new Set();
     onValue(ref(db, "proposals"), snap => {
       const d = snap.val() || {};
       P = Object.entries(d).map(([k, v]) => ({ ...v, _key: k })).sort((a, b) => (a.no || 0) - (b.no || 0));
@@ -133,64 +144,75 @@
       pRender();
     });
     onValue(ref(db, "pcomments"), snap => { COMMENTS = snap.val() || {}; pRender(); });
-    function photosView(s) { const ph = s.photos || []; return ph.length ? `<h4>사진</h4><div class="p-photos">${ph.map(u => `<img class="p-photo" src="${pEsc(u)}" loading="lazy">`).join("")}</div>` : ""; }
+    const normPh = p => typeof p === "string" ? { url: p, kind: "before" } : p;
+    function photoGroups(s) {
+      const ph = (s.photos || []).map(normPh); if (!ph.length) return "";
+      const grp = (kind, label) => { const a = ph.filter(p => (p.kind || "before") === kind); return a.length ? `<div class="pg"><div class="pg-l">${label}</div><div class="p-photos">${a.map(p => `<img class="p-photo" src="${pEsc(p.url)}" loading="lazy">`).join("")}</div></div>` : ""; };
+      return `<h4>사진</h4>${grp("before", "조치 전")}${grp("after", "조치 후")}`;
+    }
+    function ddayOf(s) {
+      const fu = (s.followup || "").trim(); if (!fu) return null;
+      const last = fu.split("\n").map(x => x.trim()).filter(Boolean).pop() || "";
+      const yy = new Date().getFullYear() % 100; let mo = null, dd = null;
+      const qm = last.match(/([1-4])\s*분기/);
+      if (qm) { const q = +qm[1]; mo = [3, 6, 9, 12][q - 1]; dd = [31, 30, 30, 31][q - 1]; }
+      else { const mm = last.match(/(\d{1,2})\s*월/); if (mm) { mo = +mm[1]; dd = new Date(2000 + yy, mo, 0).getDate(); } }
+      if (!mo) return null;
+      const target = `${String(yy).padStart(2, "0")}${String(mo).padStart(2, "0")}${String(dd).padStart(2, "0")}`;
+      const tgt = new Date(2000 + yy, mo - 1, dd), today = new Date(); today.setHours(0, 0, 0, 0);
+      return { target, days: Math.round((tgt - today) / 86400000) };
+    }
+    const fmtDate = v => { v = (v || "").trim(); if (/^\d{6}$/.test(v)) return v; const m = v.match(/^(\d{1,2})\s*[\/.\-]\s*(\d{1,2})$/); if (!m) return null; const yy = String(new Date().getFullYear() % 100).padStart(2, "0"); return yy + String(+m[1]).padStart(2, "0") + String(+m[2]).padStart(2, "0"); };
     function pRender() {
       const q = (pq("#pSearch").value || "").replace(/\s+/g, "").toLowerCase();
       let rows = P.filter(s => pSt(s) === pTab);
       if (q) rows = rows.filter(s => ((s.mgmtNo || "") + (s.team || "") + (s.title || "") + (s.content || "")).replace(/\s+/g, "").toLowerCase().includes(q));
       const box = pq("#pList");
       if (!rows.length) { box.innerHTML = '<div class="p-empty">' + (P.length ? "해당하는 제안이 없습니다." : "등록된 제안이 없습니다.") + '</div>'; return; }
-      box.innerHTML = rows.map(s => { const st = pSt(s), nw = pNew(s), k = s._key;
+      box.innerHTML = rows.map(s => { const st = pSt(s), nw = pNew(s), k = s._key, editing = unlocked && editingKeys.has(k);
         const cents = Object.entries(COMMENTS[k] || {}).sort((a, b) => a[0] < b[0] ? -1 : 1), cc = cents.length;
         const clist = cc ? cents.map(([, c]) => `<div class="pcm-item"><span class="pcm-nm">${pEsc(c.name)}</span><span class="pcm-tm">${pEsc(c.time)}</span><div class="pcm-tx">${pEsc(c.text)}</div></div>`).join("") : '<div class="pcm-empty">첫 댓글을 남겨보세요. (실명 입력)</div>';
-        const editBox = editMode ? `<div class="ef">
+        const dd = ddayOf(s), ddBadge = dd ? `<span class="p-dday${dd.days < 0 ? ' over' : ''}">${dd.days >= 0 ? "D-" + dd.days : "D+" + (-dd.days)}</span>` : "";
+        const body = editing ? `<div class="ef">
             <div class="ef-row">
               <label>심사결과<select data-f="review">${optHtml(OPT_REVIEW, s.review)}</select></label>
               <label>시행<select data-f="action">${optHtml(OPT_ACTION, s.action)}</select></label>
               <label>완료<select data-f="done">${optHtml(OPT_DONE, s.done)}</select></label>
             </div>
-            <label>조치현황 (Follow-up · 날짜별로 줄바꿈)<textarea data-f="followup" rows="4">${pEsc(s.followup || "")}</textarea></label>
-            <div class="ef-photos">${(s.photos || []).map((u, i) => `<span class="ef-ph"><img src="${pEsc(u)}"><button class="ef-ph-x" data-rm="${i}">×</button></span>`).join("")}</div>
-            <div class="ef-actions"><label class="ef-up">📷 사진 추가<input type="file" accept="image/*" multiple class="ef-file" hidden></label><button class="ef-save">저장</button></div>
-          </div>` : "";
-        const viewBox = editMode ? "" : `<div class="p-meta"><span class="p-chip">심사결과 <b>${pEsc(s.review || "—")}</b></span><span class="p-chip">시행 <b>${pEsc(s.action || "—")}</b></span><span class="p-chip">완료 <b>${pEsc(s.done || "—")}</b></span></div>
-          <h4>조치현황 (Follow-up)</h4><div class="p-follow">${pEsc(s.followup || "—")}</div>${photosView(s)}
+            <label>조치현황 (Follow-up)<textarea data-f="followup" rows="5">${pEsc(s.followup || "")}</textarea></label>
+            <div class="fu-add"><input class="fu-date" placeholder="8/3"><input class="fu-text" placeholder="내용 (예: 4분기 진행 예정)"><button class="fu-btn">＋줄</button></div>
+            ${photoGroups(s)}<div class="ef-note">📷 사진 추가·삭제는 제안설정에서</div>
+            <div class="ef-actions"><button class="ef-save">저장</button><button class="ef-cancel">취소</button></div>
+          </div>` : `<div class="p-meta"><span class="p-chip">심사결과 <b>${pEsc(s.review || "—")}</b></span><span class="p-chip">시행 <b>${pEsc(s.action || "—")}</b></span><span class="p-chip">완료 <b>${pEsc(s.done || "—")}</b></span>${dd ? `<span class="p-chip">목표 <b>${pEsc(dd.target)}</b></span>` : ""}</div>
+          <h4>조치현황 (Follow-up)</h4><div class="p-follow">${pEsc(s.followup || "—")}</div>${photoGroups(s)}
+          ${unlocked ? '<div class="ef-actions"><button class="p-editbtn">✏ 이 건 수정</button></div>' : ""}
           <h4>댓글 ${cc}</h4><div class="pcm-list">${clist}</div>
           <div class="pcm-form"><input class="pcm-name" placeholder="이름(실명)" maxlength="20"><input class="pcm-text" placeholder="댓글 입력" maxlength="200"><button class="pcm-send">등록</button></div>`;
-        return `<div class="p-card${nw ? ' isnew' : ''}${openKeys.has(k) ? ' open' : ''}${editMode ? ' editing' : ''}" data-k="${pEsc(k)}">
-          <div class="p-head"><span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span>${nw ? '<span class="p-new">NEW</span>' : ''}${cc ? `<span class="p-cc">💬 ${cc}</span>` : ''}<span class="p-team">${pEsc(s.team || "")}</span><span class="p-badge ${pBadge(st)}">${st}</span></div>
-          <div class="p-detail"><h4>제안 내용</h4><div class="p-content">${pEsc(s.content || "")}</div>${editBox}${viewBox}</div>
+        return `<div class="p-card${nw ? ' isnew' : ''}${openKeys.has(k) ? ' open' : ''}${editing ? ' editing' : ''}" data-k="${pEsc(k)}">
+          <div class="p-head"><span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span>${nw ? '<span class="p-new">NEW</span>' : ''}${ddBadge}${cc ? `<span class="p-cc">💬 ${cc}</span>` : ''}<span class="p-team">${pEsc(s.team || "")}</span><span class="p-badge ${pBadge(st)}">${st}</span></div>
+          <div class="p-detail"><h4>제안 내용</h4><div class="p-content">${pEsc(s.content || "")}</div>${body}</div>
         </div>`; }).join("");
       box.querySelectorAll(".p-card").forEach(card => {
         const k = card.dataset.k, item = P.find(x => x._key === k) || {};
         card.querySelector(".p-head").onclick = () => { card.classList.toggle("open"); card.classList.contains("open") ? openKeys.add(k) : openKeys.delete(k); };
         card.querySelectorAll(".p-photo").forEach(img => img.onclick = () => openImageModal(img.src, "제안 사진"));
-        if (editMode) {
-          const sv = card.querySelector(".ef-save");
-          if (sv) sv.onclick = async () => {
+        if (unlocked && editingKeys.has(k)) {
+          card.querySelector(".fu-btn").onclick = () => {
+            const dEl = card.querySelector(".fu-date"), tEl = card.querySelector(".fu-text"), ta = card.querySelector("textarea[data-f=followup]");
+            const dv = fmtDate(dEl.value); if (!dv) return alert("날짜를 8/3 형식으로 입력하세요.");
+            ta.value = (ta.value ? ta.value.replace(/\s*$/, "") + "\n" : "") + dv + " " + tEl.value.trim();
+            dEl.value = ""; tEl.value = "";
+          };
+          card.querySelector(".ef-save").onclick = async () => {
             const obj = { ...item }; delete obj._key;
             card.querySelectorAll("[data-f]").forEach(el => obj[el.getAttribute("data-f")] = el.value);
-            obj.updatedAt = Date.now(); sv.disabled = true;
-            try { await set(ref(db, "proposals/" + k), obj); } catch (e) { alert("저장 실패"); }
-            sv.disabled = false;
+            obj.updatedAt = Date.now();
+            const btn = card.querySelector(".ef-save"); btn.disabled = true;
+            try { await set(ref(db, "proposals/" + k), obj); editingKeys.delete(k); } catch (e) { alert("저장 실패"); btn.disabled = false; }
           };
-          const fi = card.querySelector(".ef-file");
-          if (fi) fi.onchange = async () => {
-            const files = [...fi.files]; if (!files.length) return;
-            const up = card.querySelector(".ef-up"); up.textContent = "업로드 중…";
-            try {
-              const urls = [];
-              for (const f of files) { const r = sRef(storage, "proposalPhotos/" + k + "/" + Date.now() + "_" + f.name); await uploadBytes(r, f); urls.push(await getDownloadURL(r)); }
-              openKeys.add(k);
-              await set(ref(db, "proposals/" + k + "/photos"), (item.photos || []).concat(urls));
-              await set(ref(db, "proposals/" + k + "/updatedAt"), Date.now());
-            } catch (e) { alert("사진 업로드 실패"); up.innerHTML = "📷 사진 추가"; }
-          };
-          card.querySelectorAll(".ef-ph-x").forEach(b => b.onclick = async () => {
-            const ph = (item.photos || []).slice(); ph.splice(+b.dataset.rm, 1); openKeys.add(k);
-            await set(ref(db, "proposals/" + k + "/photos"), ph.length ? ph : null);
-          });
+          card.querySelector(".ef-cancel").onclick = () => { editingKeys.delete(k); pRender(); };
         } else {
+          const eb = card.querySelector(".p-editbtn"); if (eb) eb.onclick = () => { editingKeys.add(k); openKeys.add(k); pRender(); };
           card.querySelector(".pcm-send").onclick = async () => {
             const nameEl = card.querySelector(".pcm-name"), textEl = card.querySelector(".pcm-text"), btn = card.querySelector(".pcm-send");
             const name = nameEl.value.trim(), text = textEl.value.trim();
@@ -213,8 +235,8 @@
       pTab = t.dataset.s; document.querySelectorAll("#pboard .p-tab:not(.settab)").forEach(x => x.classList.toggle("on", x === t)); pRender();
     });
     pq("#pEdit").onclick = () => {
-      if (!editMode) { if (prompt("수정 암호를 입력하세요") !== "0000") return; editMode = true; pq("#pEdit").textContent = "✔ 수정 완료"; }
-      else { editMode = false; pq("#pEdit").textContent = "✏️ 수정"; }
+      if (!unlocked) { if (prompt("수정 암호를 입력하세요") !== "0000") return; unlocked = true; pq("#pEdit").textContent = "🔒 수정 잠금"; }
+      else { unlocked = false; editingKeys.clear(); pq("#pEdit").textContent = "✏️ 수정"; }
       pRender();
     };
     pq("#pSearch").oninput = pRender;

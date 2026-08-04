@@ -46,6 +46,9 @@
   .newb{font-size:10px;font-weight:800;color:#fff;background:#EF4444;padding:2px 7px;border-radius:6px;letter-spacing:.04em}
   .hy-photos{display:flex;flex-wrap:wrap;gap:8px}
   .hy-photo{width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer}
+  .pg{margin-bottom:8px}.pg-l{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:4px}
+  .dday{font-size:11px;font-weight:800;color:#B45309;background:#FEF3C7;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .dday.over{color:#991B1B;background:#FEE2E2}
   .card.isnew{border-color:#FCA5A5;box-shadow:0 0 0 1px #FCA5A5}
 </style>
 </head>
@@ -76,6 +79,9 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 const statusOf=s=>{const d=(s.done||"").trim();return d==="완료"?"완료":d==="미완료"?"진행중":"미진행";};
 const badgeOf=st=>st==="완료"?"b-wan":st==="미진행"?"b-bor":"b-jin";
 const newOf=s=>s.updatedAt&&(Date.now()-s.updatedAt<7*24*3600*1000);
+const normPh=p=>typeof p==="string"?{url:p,kind:"before"}:p;
+function photoGroups(s){const ph=(s.photos||[]).map(normPh);if(!ph.length)return"";const grp=(kind,label)=>{const a=ph.filter(p=>(p.kind||"before")===kind);return a.length?`<div class="pg"><div class="pg-l">${label}</div><div class="hy-photos">${a.map(p=>`<img class="hy-photo" src="${esc(p.url)}" loading="lazy" onclick="window.open(this.src,'_blank')">`).join("")}</div></div>`:"";};return `<h3>사진</h3>${grp("before","조치 전")}${grp("after","조치 후")}`;}
+function ddayOf(s){const fu=(s.followup||"").trim();if(!fu)return null;const last=fu.split("\n").map(x=>x.trim()).filter(Boolean).pop()||"";const yy=new Date().getFullYear()%100;let mo=null,dd=null;const qm=last.match(/([1-4])\s*분기/);if(qm){const q=+qm[1];mo=[3,6,9,12][q-1];dd=[31,30,30,31][q-1];}else{const mm=last.match(/(\d{1,2})\s*월/);if(mm){mo=+mm[1];dd=new Date(2000+yy,mo,0).getDate();}}if(!mo)return null;const target=`${String(yy).padStart(2,"0")}${String(mo).padStart(2,"0")}${String(dd).padStart(2,"0")}`;const tgt=new Date(2000+yy,mo-1,dd),today=new Date();today.setHours(0,0,0,0);return{target,days:Math.round((tgt-today)/86400000)};}
 const postHeight=()=>{ if(window.parent!==window) window.parent.postMessage({proposalsHeight:document.body.scrollHeight+24},"*"); };
 addEventListener("resize",postHeight);
 
@@ -95,12 +101,13 @@ function render(){
   const box=$("#list");
   if(!rows.length){ box.innerHTML='<div class="empty">'+(ITEMS.length?"해당하는 제안이 없습니다.":"등록된 제안이 없습니다. (제안설정에서 엑셀을 가져오세요)")+'</div>'; postHeight(); return; }
   box.innerHTML=rows.map(s=>{
-    const st=statusOf(s),nw=newOf(s);
+    const st=statusOf(s),nw=newOf(s),dd=ddayOf(s);
     return `<div class="card${nw?' isnew':''}">
       <div class="head">
         <span class="id">${esc(s.mgmtNo||"")}</span>
         <span class="ttl">${esc(s.title||"(제목 없음)")}</span>
         ${nw?'<span class="newb">NEW</span>':''}
+        ${dd?`<span class="dday${dd.days<0?' over':''}">${dd.days>=0?"D-"+dd.days:"D+"+(-dd.days)}</span>`:''}
         <span class="team">${esc(s.team||"")}</span>
         <span class="badge ${badgeOf(st)}">${st}</span>
         <span class="arw">▸</span>
@@ -115,7 +122,7 @@ function render(){
         </div>
         <h3>조치현황 (Follow-up)</h3>
         <div class="followup">${esc(s.followup||"—")}</div>
-        ${(s.photos&&s.photos.length)?`<h3>사진</h3><div class="hy-photos">${s.photos.map(u=>`<img class="hy-photo" src="${esc(u)}" loading="lazy" onclick="window.open(this.src,'_blank')">`).join("")}</div>`:""}
+        ${photoGroups(s)}
       </div>
     </div>`;
   }).join("");
