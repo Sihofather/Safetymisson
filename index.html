@@ -44,8 +44,7 @@
     #pboard .p-chip{font-size:12px;background:#fff;border:1px solid #E6E9EF;border-radius:8px;padding:6px 9px}
     #pboard .p-follow{white-space:pre-wrap;font-size:13px;line-height:1.6;background:#fff;border:1px solid #E6E9EF;border-radius:10px;padding:11px;color:#374151}
     #pboard .p-empty{text-align:center;color:#5B6678;padding:30px 0;font-size:14px}
-    #pboard .p-new{font-size:11px;font-weight:900;letter-spacing:.06em;background:linear-gradient(90deg,#9C7A1E,#FFD700,#FFF3B0,#FFD700,#9C7A1E);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:pshine 2.2s linear infinite}
-    @keyframes pshine{to{background-position:200% center}}
+    #pboard .p-new{flex:0 0 auto;font-size:10px;font-weight:900;letter-spacing:.04em;color:#5A4200;background:linear-gradient(180deg,#FFE47A,#F4C20D);border:1px solid #E0A800;padding:2px 7px;border-radius:6px;box-shadow:0 1px 2px rgba(180,140,0,.35)}
     #pboard .p-card.isnew{border-color:#EBCB6B;box-shadow:0 0 0 1px #EBCB6B}
     #pboard .p-cc{font-size:11px;color:#2563EB;font-weight:800;white-space:nowrap}
     #pboard .p-detail h4{margin-top:14px}
@@ -200,7 +199,7 @@
           <h4>댓글 ${cc}</h4><div class="pcm-list">${clist}</div>
           <div class="pcm-form"><input class="pcm-name" placeholder="이름(실명)" maxlength="20"><input class="pcm-text" placeholder="댓글 입력" maxlength="200"><button class="pcm-send">등록</button></div>`;
         return `<div class="p-card${nw ? ' isnew' : ''}${openKeys.has(k) ? ' open' : ''}${unlocked ? ' editing' : ''}" data-k="${pEsc(k)}">
-          <div class="p-head"><span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span>${nw ? '<span class="p-new">NEW</span>' : ''}${ddBadge}${cc ? `<span class="p-cc">💬 ${cc}</span>` : ''}<span class="p-team">${pEsc(s.team || "")}</span></div>
+          <div class="p-head">${nw ? '<span class="p-new">NEW</span>' : ''}<span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span>${ddBadge}${cc ? `<span class="p-cc">💬 ${cc}</span>` : ''}<span class="p-team">${pEsc(s.team || "")}</span></div>
           <div class="p-detail"><h4>제안 내용</h4><div class="p-content">${pEsc(s.content || "")}</div>${body}</div>
         </div>`; }).join("");
       box.querySelectorAll(".p-card").forEach(card => {

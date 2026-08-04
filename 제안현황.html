@@ -43,8 +43,7 @@
   .empty{text-align:center;color:var(--muted);padding:40px 0;font-size:14px}
   .hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
   .editbtn{flex:0 0 auto;font-size:13px;font-weight:800;color:#fff;background:var(--blue);border:0;border-radius:9px;padding:8px 12px;cursor:pointer;white-space:nowrap;margin-top:3px}
-  .newb{font-size:11px;font-weight:900;letter-spacing:.06em;background:linear-gradient(90deg,#9C7A1E,#FFD700,#FFF3B0,#FFD700,#9C7A1E);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:hshine 2.2s linear infinite}
-  @keyframes hshine{to{background-position:200% center}}
+  .newb{flex:0 0 auto;font-size:10px;font-weight:900;letter-spacing:.04em;color:#5A4200;background:linear-gradient(180deg,#FFE47A,#F4C20D);border:1px solid #E0A800;padding:2px 7px;border-radius:6px;box-shadow:0 1px 2px rgba(180,140,0,.35)}
   .hy-photos{display:flex;flex-wrap:wrap;gap:8px}
   .hy-photo{width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer}
   .pg{margin-bottom:8px}.pg-l{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:4px}
@@ -107,9 +106,9 @@ function render(){
     const st=statusOf(s),nw=newOf(s),dd=st==="완료"?null:ddayOf(s);
     return `<div class="card${nw?' isnew':''}">
       <div class="head">
+        ${nw?'<span class="newb">NEW</span>':''}
         <span class="id">${esc(s.mgmtNo||"")}</span>
         <span class="ttl">${esc(s.title||"(제목 없음)")}</span>
-        ${nw?'<span class="newb">NEW</span>':''}
         ${dd?(dd.kind==="date"?`<span class="dday${dd.days<0?' over':''}">${dd.days>=0?"D-"+dd.days:"D+"+(-dd.days)}</span>`:`<span class="dday txt ${dd.tone}">${esc(dd.label)}</span>`):''}
         <span class="team">${esc(s.team||"")}</span>
         <span class="arw">▸</span>
