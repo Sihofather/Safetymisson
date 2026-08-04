@@ -49,7 +49,7 @@
   .pg{margin-bottom:8px}.pg-l{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:4px}
   .dday{font-size:11px;font-weight:800;color:#B45309;background:#FEF3C7;padding:2px 8px;border-radius:999px;white-space:nowrap}
   .dday.over{color:#991B1B;background:#FEE2E2}
-  .dday.txt{color:var(--muted);background:#EEF0F5}
+  .dday.txt{color:#fff;background:#EF4444}
   .card.isnew{border-color:#FCA5A5;box-shadow:0 0 0 1px #FCA5A5}
 </style>
 </head>
@@ -83,7 +83,7 @@ const newOf=s=>s.updatedAt&&(Date.now()-s.updatedAt<7*24*3600*1000);
 const normPh=p=>typeof p==="string"?{url:p,kind:"before"}:p;
 function photoGroups(s){const ph=(s.photos||[]).map(normPh);if(!ph.length)return"";const grp=(kind,label)=>{const a=ph.filter(p=>(p.kind||"before")===kind);return a.length?`<div class="pg"><div class="pg-l">${label}</div><div class="hy-photos">${a.map(p=>`<img class="hy-photo" src="${esc(p.url)}" loading="lazy" onclick="window.open(this.src,'_blank')">`).join("")}</div></div>`:"";};return `<h3>사진</h3>${grp("before","조치 전")}${grp("after","조치 후")}`;}
 function targetMD(line){const yy=new Date().getFullYear()%100,cands=[];let m;const rQ=/([1-4])\s*분기/g;while((m=rQ.exec(line)))cands.push({mo:[3,6,9,12][+m[1]-1],dd:[31,30,30,31][+m[1]-1],pos:m.index});const rM=/(\d{1,2})\s*월/g;while((m=rM.exec(line))){const mo=+m[1];if(mo>=1&&mo<=12)cands.push({mo,dd:new Date(2000+yy,mo,0).getDate(),pos:m.index});}if(!cands.length)return null;const impl=[...line.matchAll(/시행|진행|설치|완료|예정|교체|보완/g)].map(x=>x.index);let best=null;for(const c of cands)for(const ip of impl)if(ip>=c.pos){const g=ip-c.pos;if(!best||g<best.g)best={c,g};}return best?best.c:cands[cands.length-1];}
-function ddayOf(s){const fu=(s.followup||"").trim();if(!fu)return null;const last=fu.split("\n").map(x=>x.trim()).filter(Boolean).pop()||"";const md=targetMD(last),yy=new Date().getFullYear()%100;if(md){const target=`${String(yy).padStart(2,"0")}${String(md.mo).padStart(2,"0")}${String(md.dd).padStart(2,"0")}`;const tgt=new Date(2000+yy,md.mo-1,md.dd),today=new Date();today.setHours(0,0,0,0);return{kind:"date",target,days:Math.round((tgt-today)/86400000)};}const label=last.replace(/^\d{6}\s*/,"").trim();if(!label)return null;return{kind:"text",label:label.length>12?label.slice(0,12)+"…":label};}
+function ddayOf(s){const fu=(s.followup||"").trim();if(!fu)return null;const last=fu.split("\n").map(x=>x.trim()).filter(Boolean).pop()||"";const md=targetMD(last),yy=new Date().getFullYear()%100;if(md){const target=String(yy).padStart(2,"0")+"."+String(md.mo).padStart(2,"0")+"."+String(md.dd).padStart(2,"0");const tgt=new Date(2000+yy,md.mo-1,md.dd),today=new Date();today.setHours(0,0,0,0);return{kind:"date",target,days:Math.round((tgt-today)/86400000)};}const raw=last.replace(/^(\d{2}\.\d{2}\.\d{2}|\d{6})\s*/,"").trim();if(!raw)return null;return{kind:"text",label:/추후/.test(raw)?"추후 진행":"날짜 미선정"};}
 const postHeight=()=>{ if(window.parent!==window) window.parent.postMessage({proposalsHeight:document.body.scrollHeight+24},"*"); };
 addEventListener("resize",postHeight);
 

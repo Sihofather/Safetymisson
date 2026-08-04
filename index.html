@@ -81,7 +81,7 @@
     #pboard .ef-note{font-size:12px;color:#5B6678;margin:8px 0}
     #pboard .p-dday{font-size:11px;font-weight:800;color:#B45309;background:#FEF3C7;padding:2px 8px;border-radius:999px;white-space:nowrap}
     #pboard .p-dday.over{color:#991B1B;background:#FEE2E2}
-    #pboard .p-dday.txt{color:#5B6678;background:#EEF0F5}
+    #pboard .p-dday.txt{color:#fff;background:#EF4444}
     #pboard .pg{margin-bottom:8px}
     #pboard .pg-l{font-size:12px;font-weight:800;color:#5B6678;margin-bottom:4px}
     #pboard .fu-add{display:flex;gap:6px;margin-top:8px}
@@ -165,14 +165,14 @@
       const last = fu.split("\n").map(x => x.trim()).filter(Boolean).pop() || "";
       const md = targetMD(last), yy = new Date().getFullYear() % 100;
       if (md) {
-        const target = `${String(yy).padStart(2, "0")}${String(md.mo).padStart(2, "0")}${String(md.dd).padStart(2, "0")}`;
+        const target = String(yy).padStart(2, "0") + "." + String(md.mo).padStart(2, "0") + "." + String(md.dd).padStart(2, "0");
         const tgt = new Date(2000 + yy, md.mo - 1, md.dd), today = new Date(); today.setHours(0, 0, 0, 0);
         return { kind: "date", target, days: Math.round((tgt - today) / 86400000) };
       }
-      const label = last.replace(/^\d{6}\s*/, "").trim(); if (!label) return null;
-      return { kind: "text", label: label.length > 12 ? label.slice(0, 12) + "…" : label };
+      const raw = last.replace(/^(\d{2}\.\d{2}\.\d{2}|\d{6})\s*/, "").trim(); if (!raw) return null;
+      return { kind: "text", label: /추후/.test(raw) ? "추후 진행" : "날짜 미선정" };
     }
-    const fmtDate = v => { v = (v || "").trim(); if (/^\d{6}$/.test(v)) return v; const m = v.match(/^(\d{1,2})\s*[\/.\-]\s*(\d{1,2})$/); if (!m) return null; const yy = String(new Date().getFullYear() % 100).padStart(2, "0"); return yy + String(+m[1]).padStart(2, "0") + String(+m[2]).padStart(2, "0"); };
+    const fmtDate = v => { v = (v || "").trim(); if (/^\d{2}\.\d{2}\.\d{2}$/.test(v)) return v; if (/^\d{6}$/.test(v)) return v.slice(0, 2) + "." + v.slice(2, 4) + "." + v.slice(4, 6); const m = v.match(/^(\d{1,2})\s*[\/.\-]\s*(\d{1,2})$/); if (!m) return null; const yy = String(new Date().getFullYear() % 100).padStart(2, "0"); return yy + "." + String(+m[1]).padStart(2, "0") + "." + String(+m[2]).padStart(2, "0"); };
     function pRender() {
       const q = (pq("#pSearch").value || "").replace(/\s+/g, "").toLowerCase();
       let rows = P.filter(s => pSt(s) === pTab);
