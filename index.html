@@ -81,7 +81,8 @@
     #pboard .ef-note{font-size:12px;color:#5B6678;margin:8px 0}
     #pboard .p-dday{font-size:11px;font-weight:800;color:#B45309;background:#FEF3C7;padding:2px 8px;border-radius:999px;white-space:nowrap}
     #pboard .p-dday.over{color:#991B1B;background:#FEE2E2}
-    #pboard .p-dday.txt{color:#fff;background:#EF4444}
+    #pboard .p-dday.txt.orange{color:#fff;background:#F59E0B}
+    #pboard .p-dday.txt.red{color:#fff;background:#EF4444}
     #pboard .pg{margin-bottom:8px}
     #pboard .pg-l{font-size:12px;font-weight:800;color:#5B6678;margin-bottom:4px}
     #pboard .fu-add{display:flex;gap:6px;margin-top:8px}
@@ -170,7 +171,7 @@
         return { kind: "date", target, days: Math.round((tgt - today) / 86400000) };
       }
       const raw = last.replace(/^(\d{2}\.\d{2}\.\d{2}|\d{6})\s*/, "").trim(); if (!raw) return null;
-      return { kind: "text", label: /추후/.test(raw) ? "추후 진행" : "날짜 미선정" };
+      const tui = /추후/.test(raw); return { kind: "text", label: tui ? "추후 진행" : "날짜 미선정", tone: tui ? "orange" : "red" };
     }
     const fmtDate = v => { v = (v || "").trim(); if (/^\d{2}\.\d{2}\.\d{2}$/.test(v)) return v; if (/^\d{6}$/.test(v)) return v.slice(0, 2) + "." + v.slice(2, 4) + "." + v.slice(4, 6); const m = v.match(/^(\d{1,2})\s*[\/.\-]\s*(\d{1,2})$/); if (!m) return null; const yy = String(new Date().getFullYear() % 100).padStart(2, "0"); return yy + "." + String(+m[1]).padStart(2, "0") + "." + String(+m[2]).padStart(2, "0"); };
     function pRender() {
@@ -182,7 +183,7 @@
       box.innerHTML = rows.map(s => { const st = pSt(s), nw = pNew(s), k = s._key;
         const cents = Object.entries(COMMENTS[k] || {}).sort((a, b) => a[0] < b[0] ? -1 : 1), cc = cents.length;
         const clist = cc ? cents.map(([, c]) => `<div class="pcm-item"><span class="pcm-nm">${pEsc(c.name)}</span><span class="pcm-tm">${pEsc(c.time)}</span><div class="pcm-tx">${pEsc(c.text)}</div></div>`).join("") : '<div class="pcm-empty">첫 댓글을 남겨보세요. (실명 입력)</div>';
-        const dd = ddayOf(s), ddBadge = dd ? (dd.kind === "date" ? `<span class="p-dday${dd.days < 0 ? ' over' : ''}">${dd.days >= 0 ? "D-" + dd.days : "D+" + (-dd.days)}</span>` : `<span class="p-dday txt">${pEsc(dd.label)}</span>`) : "";
+        const dd = st === "완료" ? null : ddayOf(s), ddBadge = dd ? (dd.kind === "date" ? `<span class="p-dday${dd.days < 0 ? ' over' : ''}">${dd.days >= 0 ? "D-" + dd.days : "D+" + (-dd.days)}</span>` : `<span class="p-dday txt ${dd.tone}">${pEsc(dd.label)}</span>`) : "";
         const body = unlocked ? `<div class="ef">
             <div class="ef-row">
               <label>심사결과<select data-f="review">${optHtml(OPT_REVIEW, s.review)}</select></label>
@@ -198,7 +199,7 @@
           <h4>댓글 ${cc}</h4><div class="pcm-list">${clist}</div>
           <div class="pcm-form"><input class="pcm-name" placeholder="이름(실명)" maxlength="20"><input class="pcm-text" placeholder="댓글 입력" maxlength="200"><button class="pcm-send">등록</button></div>`;
         return `<div class="p-card${nw ? ' isnew' : ''}${openKeys.has(k) ? ' open' : ''}${unlocked ? ' editing' : ''}" data-k="${pEsc(k)}">
-          <div class="p-head"><span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span>${nw ? '<span class="p-new">NEW</span>' : ''}${ddBadge}${cc ? `<span class="p-cc">💬 ${cc}</span>` : ''}<span class="p-team">${pEsc(s.team || "")}</span><span class="p-badge ${pBadge(st)}">${st}</span></div>
+          <div class="p-head"><span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span>${nw ? '<span class="p-new">NEW</span>' : ''}${ddBadge}${cc ? `<span class="p-cc">💬 ${cc}</span>` : ''}<span class="p-team">${pEsc(s.team || "")}</span></div>
           <div class="p-detail"><h4>제안 내용</h4><div class="p-content">${pEsc(s.content || "")}</div>${body}</div>
         </div>`; }).join("");
       box.querySelectorAll(".p-card").forEach(card => {

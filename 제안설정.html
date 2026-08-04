@@ -58,7 +58,7 @@
   .fu-btn{flex:0 0 auto;background:var(--blue);color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:700;font-size:13px;cursor:pointer}
   .dday{font-size:11px;font-weight:800;color:#B45309;background:#FEF3C7;padding:2px 8px;border-radius:999px;white-space:nowrap}
   .dday.over{color:#991B1B;background:#FEE2E2}
-  .dday.txt{color:#fff;background:#EF4444}
+  .dday.txt.orange{color:#fff;background:#F59E0B}.dday.txt.red{color:#fff;background:#EF4444}
 </style>
 </head>
 <body>
@@ -130,7 +130,7 @@ const optHtml=(opts,val)=>opts.map(o=>`<option value="${esc(o)}"${(val||"")===o?
 const normPh=p=>typeof p==="string"?{url:p,kind:"before"}:p;
 const fmtDate=v=>{v=(v||"").trim();if(/^\d{2}\.\d{2}\.\d{2}$/.test(v))return v;if(/^\d{6}$/.test(v))return v.slice(0,2)+"."+v.slice(2,4)+"."+v.slice(4,6);const m=v.match(/^(\d{1,2})\s*[\/.\-]\s*(\d{1,2})$/);if(!m)return null;const yy=String(new Date().getFullYear()%100).padStart(2,"0");return yy+"."+String(+m[1]).padStart(2,"0")+"."+String(+m[2]).padStart(2,"0");};
 function targetMD(line){const yy=new Date().getFullYear()%100,cands=[];let m;const rQ=/([1-4])\s*분기/g;while((m=rQ.exec(line)))cands.push({mo:[3,6,9,12][+m[1]-1],dd:[31,30,30,31][+m[1]-1],pos:m.index});const rM=/(\d{1,2})\s*월/g;while((m=rM.exec(line))){const mo=+m[1];if(mo>=1&&mo<=12)cands.push({mo,dd:new Date(2000+yy,mo,0).getDate(),pos:m.index});}if(!cands.length)return null;const impl=[...line.matchAll(/시행|진행|설치|완료|예정|교체|보완/g)].map(x=>x.index);let best=null;for(const c of cands)for(const ip of impl)if(ip>=c.pos){const g=ip-c.pos;if(!best||g<best.g)best={c,g};}return best?best.c:cands[cands.length-1];}
-function ddayOf(s){const fu=(s.followup||"").trim();if(!fu)return null;const last=fu.split("\n").map(x=>x.trim()).filter(Boolean).pop()||"";const md=targetMD(last),yy=new Date().getFullYear()%100;if(md){const target=String(yy).padStart(2,"0")+"."+String(md.mo).padStart(2,"0")+"."+String(md.dd).padStart(2,"0");const tgt=new Date(2000+yy,md.mo-1,md.dd),today=new Date();today.setHours(0,0,0,0);return{kind:"date",target,days:Math.round((tgt-today)/86400000)};}const raw=last.replace(/^(\d{2}\.\d{2}\.\d{2}|\d{6})\s*/,"").trim();if(!raw)return null;return{kind:"text",label:/추후/.test(raw)?"추후 진행":"날짜 미선정"};}
+function ddayOf(s){const fu=(s.followup||"").trim();if(!fu)return null;const last=fu.split("\n").map(x=>x.trim()).filter(Boolean).pop()||"";const md=targetMD(last),yy=new Date().getFullYear()%100;if(md){const target=String(yy).padStart(2,"0")+"."+String(md.mo).padStart(2,"0")+"."+String(md.dd).padStart(2,"0");const tgt=new Date(2000+yy,md.mo-1,md.dd),today=new Date();today.setHours(0,0,0,0);return{kind:"date",target,days:Math.round((tgt-today)/86400000)};}const raw=last.replace(/^(\d{2}\.\d{2}\.\d{2}|\d{6})\s*/,"").trim();if(!raw)return null;const t=/추후/.test(raw);return{kind:"text",label:t?"추후 진행":"날짜 미선정",tone:t?"orange":"red"};}
 function openImageModal(src){const m=document.createElement("div");m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;cursor:pointer";const i=document.createElement("img");i.src=src;i.style.cssText="max-width:100%;max-height:100%;border-radius:8px";m.appendChild(i);m.onclick=()=>m.remove();document.body.appendChild(m);}
 let ITEMS=[], curTab="진행중", COMMENTS={};
 
@@ -177,12 +177,11 @@ function render(){
   const box=$("#list");
   if(!rows.length){box.innerHTML='<div class="card" style="text-align:center;color:var(--muted)">'+(ITEMS.length?"이 상태의 제안이 없습니다.":"등록된 제안이 없습니다. ＋신규작성 탭에서 추가하거나 엑셀을 가져오세요.")+'</div>';return;}
   box.innerHTML=rows.map(s=>{
-    const st=statusOf(s),k=esc(s._key),dd=ddayOf(s);
+    const st=statusOf(s),k=esc(s._key),dd=st==="완료"?null:ddayOf(s);
     return `<div class="card" data-k="${k}">
       <div class="item-head">
         <span class="id">${esc(s.mgmtNo||s._key)}</span>
-        <span class="badge ${badgeOf(st)}">${st}</span>
-        ${dd?(dd.kind==="date"?`<span class="dday${dd.days<0?' over':''}">${dd.days>=0?"D-"+dd.days:"D+"+(-dd.days)} · ${dd.target}</span>`:`<span class="dday txt">${esc(dd.label)}</span>`):""}
+        ${dd?(dd.kind==="date"?`<span class="dday${dd.days<0?' over':''}">${dd.days>=0?"D-"+dd.days:"D+"+(-dd.days)} · ${dd.target}</span>`:`<span class="dday txt ${dd.tone}">${esc(dd.label)}</span>`):""}
         <span class="sp"></span>
         <button class="danger" data-del="${k}">삭제</button>
       </div>
