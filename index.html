@@ -46,6 +46,20 @@
     #pboard .p-empty{text-align:center;color:#5B6678;padding:30px 0;font-size:14px}
     #pboard .p-new{font-size:10px;font-weight:800;color:#fff;background:#EF4444;padding:2px 7px;border-radius:6px;letter-spacing:.04em}
     #pboard .p-card.isnew{border-color:#FCA5A5;box-shadow:0 0 0 1px #FCA5A5}
+    #pboard .p-cc{font-size:11px;color:#2563EB;font-weight:800;white-space:nowrap}
+    #pboard .p-detail h4{margin-top:14px}
+    #pboard .pcm-list{margin-bottom:10px}
+    #pboard .pcm-empty{color:#9aa3b2;font-size:13px;padding:2px 0}
+    #pboard .pcm-item{border-top:1px solid #EEF0F5;padding:8px 0}
+    #pboard .pcm-item:first-child{border-top:0}
+    #pboard .pcm-nm{font-weight:800;font-size:13px;margin-right:8px}
+    #pboard .pcm-tm{font-size:11px;color:#9aa3b2}
+    #pboard .pcm-tx{font-size:14px;margin-top:3px;white-space:pre-wrap;line-height:1.45}
+    #pboard .pcm-form{display:flex;gap:6px;flex-wrap:wrap}
+    #pboard .pcm-name{flex:0 0 92px;border:1px solid #E6E9EF;border-radius:8px;padding:8px;font-size:13px;font-family:inherit;outline:none}
+    #pboard .pcm-text{flex:1;min-width:120px;border:1px solid #E6E9EF;border-radius:8px;padding:8px;font-size:13px;font-family:inherit;outline:none}
+    #pboard .pcm-send{flex:0 0 auto;background:#2563EB;color:#fff;border:0;border-radius:8px;padding:8px 13px;font-weight:700;font-size:13px;cursor:pointer}
+    #pboard .pcm-send:disabled{opacity:.5}
   </style>
 </head>
 <body>
@@ -79,7 +93,7 @@
   <section id="suggestionBoard" style="display:none; margin-top:30px; padding-bottom:30px;"></section>
 
   <script type="module">
-    import { db, ref, onValue } from "./firebase-setup.js";
+    import { db, ref, onValue, get, push } from "./firebase-setup.js";
 
     // 💡 제안 현황 대시보드 (proposals) — index의 단일 Firebase 연결 재사용
     let P = [], pTab = "진행중";
@@ -88,25 +102,51 @@
     const pSt = s => { const d = (s.done || "").trim(); return d === "완료" ? "완료" : d === "미완료" ? "진행중" : "미진행"; };
     const pBadge = st => st === "완료" ? "b-wan" : st === "미진행" ? "b-bor" : "b-jin";
     const pNew = s => s.updatedAt && (Date.now() - s.updatedAt < 7 * 24 * 3600 * 1000);
+    const ckey = m => String(m).replace(/[.#$/\[\]]/g, "-");
+    let COMMENTS = {}, openKeys = new Set();
     onValue(ref(db, "proposals"), snap => {
       const d = snap.val() || {};
-      P = Object.values(d).sort((a, b) => (a.no || 0) - (b.no || 0));
+      P = Object.entries(d).map(([k, v]) => ({ ...v, _key: k })).sort((a, b) => (a.no || 0) - (b.no || 0));
       const c = { 진행중: 0, 완료: 0, 미진행: 0 }; P.forEach(s => c[pSt(s)]++);
       pq("#pc-jin").textContent = c.진행중; pq("#pc-wan").textContent = c.완료; pq("#pc-bor").textContent = c.미진행;
       pRender();
     });
+    onValue(ref(db, "pcomments"), snap => { COMMENTS = snap.val() || {}; pRender(); });
     function pRender() {
       const q = (pq("#pSearch").value || "").replace(/\s+/g, "").toLowerCase();
       let rows = P.filter(s => pSt(s) === pTab);
       if (q) rows = rows.filter(s => ((s.mgmtNo || "") + (s.team || "") + (s.title || "") + (s.content || "")).replace(/\s+/g, "").toLowerCase().includes(q));
       const box = pq("#pList");
       if (!rows.length) { box.innerHTML = '<div class="p-empty">' + (P.length ? "해당하는 제안이 없습니다." : "등록된 제안이 없습니다.") + '</div>'; return; }
-      box.innerHTML = rows.map(s => { const st = pSt(s), nw = pNew(s); return `<div class="p-card${nw ? ' isnew' : ''}">
-        <div class="p-head"><span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span>${nw ? '<span class="p-new">NEW</span>' : ''}<span class="p-team">${pEsc(s.team || "")}</span><span class="p-badge ${pBadge(st)}">${st}</span></div>
+      box.innerHTML = rows.map(s => { const st = pSt(s), nw = pNew(s), k = s._key;
+        const cents = Object.entries(COMMENTS[k] || {}).sort((a, b) => a[0] < b[0] ? -1 : 1), cc = cents.length;
+        const clist = cc ? cents.map(([, c]) => `<div class="pcm-item"><span class="pcm-nm">${pEsc(c.name)}</span><span class="pcm-tm">${pEsc(c.time)}</span><div class="pcm-tx">${pEsc(c.text)}</div></div>`).join("") : '<div class="pcm-empty">첫 댓글을 남겨보세요. (실명 입력)</div>';
+        return `<div class="p-card${nw ? ' isnew' : ''}${openKeys.has(k) ? ' open' : ''}" data-k="${pEsc(k)}">
+        <div class="p-head"><span class="p-id">${pEsc(s.mgmtNo || "")}</span><span class="p-ttl">${pEsc(s.title || "")}</span>${nw ? '<span class="p-new">NEW</span>' : ''}${cc ? `<span class="p-cc">💬 ${cc}</span>` : ''}<span class="p-team">${pEsc(s.team || "")}</span><span class="p-badge ${pBadge(st)}">${st}</span></div>
         <div class="p-detail"><h4>제안 내용</h4><div class="p-content">${pEsc(s.content || "")}</div>
           <div class="p-meta"><span class="p-chip">심사결과 <b>${pEsc(s.review || "—")}</b></span><span class="p-chip">시행 <b>${pEsc(s.action || "—")}</b></span><span class="p-chip">완료 <b>${pEsc(s.done || "—")}</b></span></div>
-          <h4>조치현황 (Follow-up)</h4><div class="p-follow">${pEsc(s.followup || "—")}</div></div></div>`; }).join("");
-      box.querySelectorAll(".p-head").forEach(h => h.onclick = () => h.parentElement.classList.toggle("open"));
+          <h4>조치현황 (Follow-up)</h4><div class="p-follow">${pEsc(s.followup || "—")}</div>
+          <h4>댓글 ${cc}</h4><div class="pcm-list">${clist}</div>
+          <div class="pcm-form"><input class="pcm-name" placeholder="이름(실명)" maxlength="20"><input class="pcm-text" placeholder="댓글 입력" maxlength="200"><button class="pcm-send">등록</button></div>
+        </div></div>`; }).join("");
+      box.querySelectorAll(".p-card").forEach(card => {
+        const k = card.dataset.k;
+        card.querySelector(".p-head").onclick = () => { card.classList.toggle("open"); card.classList.contains("open") ? openKeys.add(k) : openKeys.delete(k); };
+        card.querySelector(".pcm-send").onclick = async () => {
+          const nameEl = card.querySelector(".pcm-name"), textEl = card.querySelector(".pcm-text"), btn = card.querySelector(".pcm-send");
+          const name = nameEl.value.trim(), text = textEl.value.trim();
+          if (!name) return alert("이름을 입력하세요.");
+          if (!text) return alert("댓글 내용을 입력하세요.");
+          btn.disabled = true;
+          try {
+            const ok = await get(ref(db, "scores/" + name));
+            if (!ok.exists()) { alert("등록되지 않은 이름입니다.\n명부에 있는 실명으로 입력해 주세요."); btn.disabled = false; return; }
+            await push(ref(db, "pcomments/" + ckey(k)), { name, text, time: new Date().toLocaleString("ko-KR") });
+            textEl.value = ""; openKeys.add(k);
+          } catch (e) { alert("등록 실패. 다시 시도해 주세요."); }
+          btn.disabled = false;
+        };
+      });
     }
     document.querySelectorAll("#pboard .p-tab").forEach(t => t.onclick = () => { pTab = t.dataset.s; document.querySelectorAll("#pboard .p-tab").forEach(x => x.classList.remove("on")); t.classList.add("on"); pRender(); });
     pq("#pSearch").oninput = pRender;
