@@ -59,6 +59,9 @@
   .dday{font-size:11px;font-weight:800;color:#B45309;background:#FEF3C7;padding:2px 8px;border-radius:999px;white-space:nowrap}
   .dday.over{color:#991B1B;background:#FEE2E2}
   .dday.txt.orange{color:#fff;background:#F59E0B}.dday.txt.red{color:#fff;background:#EF4444}
+  .chk{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)}
+  .chk input{width:auto;margin:0;transform:scale(1.2)}
+  .admonce{font-size:10px;font-weight:700;color:var(--blue);background:#EFF6FF;border-radius:5px;padding:1px 5px;margin-left:4px}
 </style>
 </head>
 <body>
@@ -94,6 +97,10 @@
           <div><label>관리번호</label><input id="n-mgmt"></div>
           <div><label>소속</label><input id="n-team" placeholder="예: 생산팀"></div>
         </div>
+        <div class="row2 mt">
+          <div><label>제안 구분</label><select id="n-ptype"><option value="">(선택)</option><option>개인</option><option>그룹</option></select></div>
+          <div><label>제안자 성명</label><input id="n-proposer"></div>
+        </div>
         <div class="mt"><label>제목</label><input id="n-title"></div>
         <div class="mt"><label>제안 내용</label><textarea id="n-content" rows="4"></textarea></div>
         <div class="row3 mt">
@@ -102,6 +109,7 @@
           <div><label>완료여부</label><select id="n-done"><option value="">(선택)</option><option value="미완료">미완료</option><option value="완료">완료</option></select></div>
         </div>
         <div class="mt"><label>조치현황 / 비고</label><textarea id="n-follow" rows="3" placeholder="26.08.03 접수"></textarea></div>
+        <div class="mt"><label class="chk"><input type="checkbox" id="n-prize"> 💰 상금 기안 완료</label></div>
         <div class="mt"><button class="green" id="createBtn" style="width:100%">추가</button></div>
       </div>
       <div class="card">
@@ -189,6 +197,10 @@ function render(){
         <div><label>소속</label><input data-f="team" value="${esc(s.team||"")}"></div>
         <div><label>관리번호</label><input data-f="mgmtNo" value="${esc(s.mgmtNo||"")}"></div>
       </div>
+      <div class="row2 mt">
+        <div><label>제안 구분 <span class="admonce">관리자용</span></label><select data-f="ptype"><option value=""${!s.ptype?" selected":""}>(선택)</option><option value="개인"${s.ptype==="개인"?" selected":""}>개인</option><option value="그룹"${s.ptype==="그룹"?" selected":""}>그룹</option></select></div>
+        <div><label>제안자 성명 <span class="admonce">관리자용</span></label><input data-f="proposer" value="${esc(s.proposer||"")}"></div>
+      </div>
       <div class="mt"><label>제목</label><input data-f="title" value="${esc(s.title||"")}"></div>
       <div class="mt"><label>제안 내용</label><textarea data-f="content" rows="4">${esc(s.content||"")}</textarea></div>
       <div class="row3 mt">
@@ -208,6 +220,7 @@ function render(){
       <div class="mt"><label>📷 사진 (조치 전 / 조치 후)</label>
         ${["before","after"].map(kind=>{const lb=kind==="before"?"조치 전":"조치 후";const arr=(s.photos||[]).map((p,i)=>({p:normPh(p),i})).filter(o=>(o.p.kind||"before")===kind);return `<div class="pg"><div class="pg-l">${lb}</div><div class="ph-wrap">${arr.map(o=>`<span class="ph-item"><img src="${esc(o.p.url)}" data-view="${esc(o.p.url)}"><button class="danger ph-x" data-rm="${o.i}" data-k="${k}">×</button></span>`).join("")}<label class="ph-up">＋ ${lb}<input type="file" accept="image/*" multiple class="ph-file" data-k="${k}" data-kind="${kind}" hidden></label></div></div>`;}).join("")}
       </div>
+      <div class="mt"><label class="chk"><input type="checkbox" data-f="prizeDone"${s.prizeDone?" checked":""}> 💰 상금 기안 완료</label></div>
       <div class="mt"><button class="primary" data-save="${k}">저장</button></div>
       <div class="cmod mt"><label>💬 댓글 (<span class="cmod-n">0</span>)</label><div class="cmod-list"></div></div>
     </div>`;
@@ -232,8 +245,8 @@ async function uploadPhotos(inp){
 }
 function downloadExcel(){
   if(!ITEMS.length)return Swal.fire('알림','내려받을 데이터가 없습니다.','info');
-  const rows=[["No","관리번호","소속","제목","제안내용","심사결과","시행여부","완료여부","조치현황","사진수"]];
-  ITEMS.slice().sort((a,b)=>(a.no||0)-(b.no||0)).forEach(s=>rows.push([s.no||"",s.mgmtNo||"",s.team||"",s.title||"",s.content||"",s.review||"",s.action||"",s.done||"",s.followup||"",(s.photos||[]).length]));
+  const rows=[["No","관리번호","소속","제안구분","제안자","제목","제안내용","심사결과","시행여부","완료여부","상금기안","조치현황","사진수"]];
+  ITEMS.slice().sort((a,b)=>(a.no||0)-(b.no||0)).forEach(s=>rows.push([s.no||"",s.mgmtNo||"",s.team||"",s.ptype||"",s.proposer||"",s.title||"",s.content||"",s.review||"",s.action||"",s.done||"",s.prizeDone?"완료":"",s.followup||"",(s.photos||[]).length]));
   const csv="﻿"+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="제안현황.csv";a.click();URL.revokeObjectURL(a.href);
 }
@@ -247,7 +260,7 @@ async function saveCard(k){
   const card=document.querySelector(`.card[data-k="${CSS.escape(k)}"]`);
   const orig=ITEMS.find(x=>x._key===k)||{};
   const obj={no:orig.no||0,year:orig.year||2026};
-  card.querySelectorAll("[data-f]").forEach(el=>obj[el.getAttribute("data-f")]=el.value.trim());
+  card.querySelectorAll("[data-f]").forEach(el=>{const f=el.getAttribute("data-f");obj[f]=el.type==="checkbox"?el.checked:el.value.trim();});
   obj.updatedAt=Date.now();
   const newKey=keyOf(obj.mgmtNo)||k;
   try{
@@ -270,9 +283,10 @@ $("#createBtn").onclick=async()=>{
   const done=$("#n-done").value;
   await set(ref(db,"proposals/"+keyOf(mgmtNo)),{no,year:2026,mgmtNo,team:$("#n-team").value.trim(),title,
     content:$("#n-content").value.trim(),review:$("#n-review").value.trim(),action:$("#n-action").value.trim(),
-    done,followup:$("#n-follow").value.trim(),updatedAt:Date.now()});
-  ["n-mgmt","n-team","n-title","n-content","n-review","n-action","n-follow"].forEach(i=>$("#"+i).value="");
-  $("#n-done").value="";
+    done,followup:$("#n-follow").value.trim(),
+    ptype:$("#n-ptype").value,proposer:$("#n-proposer").value.trim(),prizeDone:$("#n-prize").checked,updatedAt:Date.now()});
+  ["n-mgmt","n-team","n-title","n-content","n-review","n-action","n-follow","n-proposer"].forEach(i=>$("#"+i).value="");
+  $("#n-done").value="";$("#n-ptype").value="";$("#n-prize").checked=false;
   await Swal.fire({icon:'success',title:'추가됨',timer:900,showConfirmButton:false});
   setTab(done==="완료"?"완료":done==="미완료"?"진행중":"미진행");
 };
