@@ -50,9 +50,13 @@
     </div>
 
     <div class="mission-group">
-      <div class="group-title">👨‍💼 나의 제안 접수</div>
-      <p style="font-size: 15px; color: #555; margin-bottom: 5px;">👇 아래 <b>이미지를 눌러</b> 제안을 접수하세요!</p>
-      <img src="제안QR.jpg" alt="제안 접수" class="qr-image" onclick="window.location.href='제안접수.html'">
+      <div class="group-title">📝 건의 · 발굴 · 제안</div>
+      <p style="font-size: 15px; color: #555; margin-bottom: 10px;">👇 아래에서 <b>항목을 선택</b>하세요.</p>
+      <button class="mission-btn btn-admin" id="opt-boss">🏭 공장장님 직접 건의</button>
+      <button class="mission-btn btn-admin" id="opt-near">⚠️ 아차사고 발굴</button>
+      <button class="mission-btn btn-admin" id="opt-suggest">💡 제안 (자동 등록)</button>
+      <button class="mission-btn btn-admin" id="opt-hazard">☣️ 유해·위험 발굴</button>
+      <img src="제안QR.jpg" alt="제안 QR" class="qr-image" style="margin-top:12px" onclick="location.href='https://docs.google.com/forms/d/e/1FAIpQLSf_NGyywtsoLS3NFPVQmXf4UFENdkZi7X1Yu0SdMrL8ZoBU7w/viewform'">
     </div>
 
     <div id="qrResult"></div>
@@ -189,6 +193,13 @@
     document.getElementById('btn-guide').onclick = () => handleSelfCheck('안전가이드 활동');
     document.getElementById('btn-stretch').onclick = () => handleSelfCheck('작업 전 스트레칭');
     document.getElementById('btn-stop').onclick = () => handleSelfCheck('작업 전 1분 멈춤');
+
+    // 건의·발굴·제안 선택: 제안은 자동 등록 창, 나머지는 기존 구글폼
+    const GFORM = "https://docs.google.com/forms/d/e/1FAIpQLSf_NGyywtsoLS3NFPVQmXf4UFENdkZi7X1Yu0SdMrL8ZoBU7w/viewform";
+    document.getElementById('opt-boss').onclick = () => location.href = GFORM;
+    document.getElementById('opt-near').onclick = () => location.href = GFORM;
+    document.getElementById('opt-hazard').onclick = () => location.href = GFORM;
+    document.getElementById('opt-suggest').onclick = () => location.href = '제안접수.html';
   </script>
 </body>
 </html>
