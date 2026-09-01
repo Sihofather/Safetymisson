@@ -51,6 +51,8 @@
   .dday{font-size:11px;font-weight:800;color:#B45309;background:#FEF3C7;padding:2px 8px;border-radius:999px;white-space:nowrap}
   .dday.over{color:#991B1B;background:#FEE2E2}
   .dday.txt.orange{color:#fff;background:#F59E0B}.dday.txt.red{color:#fff;background:#EF4444}
+  .ttl-more{flex:0 0 auto;border:0;background:#EEF0F5;color:var(--muted);font-weight:800;border-radius:6px;padding:1px 7px;cursor:pointer;font-size:13px;line-height:1.5}
+  .card.ttl-open .ttl{white-space:normal;overflow:visible;text-overflow:clip}
   .card.isnew{border-color:#EBCB6B;box-shadow:0 0 0 1px #EBCB6B}
 </style>
 </head>
@@ -66,7 +68,7 @@
   <div class="tabs">
     <div class="tab jin on" data-s="진행중"><div class="n" id="c-jin">0</div><div class="l">진행중</div></div>
     <div class="tab wan" data-s="완료"><div class="n" id="c-wan">0</div><div class="l">완료</div></div>
-    <div class="tab bor" data-s="미진행"><div class="n" id="c-bor">0</div><div class="l">미진행</div></div>
+    <div class="tab bor" data-s="미시행"><div class="n" id="c-mis">0</div><div class="l">미시행</div></div>
   </div>
   <input class="search" id="search" placeholder="관리번호·소속·내용 검색">
   <div id="list"><div class="empty">불러오는 중…</div></div>
@@ -78,7 +80,7 @@ import { db, ref, onValue } from "./firebase-setup.js";
 let ITEMS=[], tab="진행중";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const statusOf=s=>{const d=(s.done||"").trim();return d==="완료"?"완료":d==="미완료"?"진행중":"미진행";};
+const statusOf=s=>{const d=(s.done||"").trim();if(d==="완료")return"완료";if((s.action||"").includes("미시행"))return"미시행";if(d==="미완료")return"진행중";return"제안접수";};
 const badgeOf=st=>st==="완료"?"b-wan":st==="미진행"?"b-bor":"b-jin";
 const newOf=s=>{const today=new Date();today.setHours(0,0,0,0);return (String(s.followup||"").match(/\d{2}\.\d{2}\.\d{2}|\d{6}/g)||[]).some(t=>{const p=t.includes(".")?t.split("."):[t.slice(0,2),t.slice(2,4),t.slice(4,6)];const mo=+p[1];if(mo<1||mo>12)return false;const d=new Date(2000+ +p[0],mo-1,+p[2]);d.setHours(0,0,0,0);const diff=(today-d)/86400000;return diff>=0&&diff<=7;});};
 const normPh=p=>typeof p==="string"?{url:p,kind:"before"}:p;
@@ -91,9 +93,9 @@ addEventListener("resize",postHeight);
 onValue(ref(db,"proposals"),snap=>{
   const d=snap.val()||{};
   ITEMS=Object.values(d).sort((a,b)=>(a.no||0)-(b.no||0));
-  const cnt={진행중:0,완료:0,미진행:0};
+  const cnt={진행중:0,완료:0,미시행:0,제안접수:0};
   ITEMS.forEach(s=>cnt[statusOf(s)]++);
-  $("#c-jin").textContent=cnt.진행중;$("#c-wan").textContent=cnt.완료;$("#c-bor").textContent=cnt.미진행;
+  $("#c-jin").textContent=cnt.진행중;$("#c-wan").textContent=cnt.완료;if($("#c-mis"))$("#c-mis").textContent=cnt.미시행;
   render();
 });
 
@@ -127,7 +129,11 @@ function render(){
       </div>
     </div>`;
   }).join("");
-  box.querySelectorAll(".card .head").forEach(h=>h.onclick=()=>{h.parentElement.classList.toggle("open");postHeight();});
+  box.querySelectorAll(".card").forEach(card=>{
+    card.querySelector(".head").onclick=()=>{card.classList.toggle("open");postHeight();};
+    const ttl=card.querySelector(".ttl");
+    if(ttl && ttl.scrollWidth>ttl.clientWidth+2){const b=document.createElement("button");b.className="ttl-more";b.textContent="⋯";b.title="제목 전체 보기";b.onclick=e=>{e.stopPropagation();card.classList.toggle("ttl-open");postHeight();};ttl.after(b);}
+  });
   postHeight();
 }
 
@@ -137,6 +143,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
   t.classList.add("on");render();
 });
 $("#search").oninput=render;
+document.addEventListener("click",e=>{if(!e.target.closest(".ttl-more"))document.querySelectorAll(".card.ttl-open").forEach(c=>c.classList.remove("ttl-open"));});
 </script>
 </body>
 </html>

@@ -46,6 +46,8 @@
     #pboard .p-empty{text-align:center;color:#5B6678;padding:30px 0;font-size:14px}
     #pboard .p-new{position:absolute;top:12px;left:-32px;width:112px;transform:rotate(-45deg);background:linear-gradient(180deg,#FFE066,#EAB308);color:#5A4200;font-size:10px;font-weight:900;letter-spacing:.1em;text-align:center;padding:3px 0;box-shadow:0 2px 4px rgba(0,0,0,.25);z-index:3}
     #pboard .p-card.isnew .p-head{padding-left:40px}
+    #pboard .ttl-more{flex:0 0 auto;border:0;background:#EEF0F5;color:#5B6678;font-weight:800;border-radius:6px;padding:1px 7px;cursor:pointer;font-size:13px;line-height:1.5}
+    #pboard .p-card.ttl-open .p-ttl{white-space:normal;overflow:visible;text-overflow:clip}
     #pboard .p-card.isnew{border-color:#EBCB6B;box-shadow:0 0 0 1px #EBCB6B}
     #pboard .p-cc{font-size:11px;color:#2563EB;font-weight:800;white-space:nowrap}
     #pboard .p-detail h4{margin-top:14px}
@@ -90,6 +92,12 @@
     #pboard .fu-date{flex:0 0 72px;border:1.5px solid #C7D7FE;border-radius:8px;padding:8px;font-size:13px;font-family:inherit;outline:none}
     #pboard .fu-text{flex:1;min-width:80px;border:1.5px solid #C7D7FE;border-radius:8px;padding:8px;font-size:13px;font-family:inherit;outline:none}
     #pboard .fu-btn{flex:0 0 auto;background:#2563EB;color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:700;font-size:13px;cursor:pointer}
+    #pboard .fu-btn:disabled{opacity:.5}
+    #pboard .fu-list{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+    #pboard .fu-item{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;background:#fff;border:1px solid #E6E9EF;border-radius:8px;padding:7px 10px;font-size:13.5px;line-height:1.45}
+    #pboard .fu-item span{white-space:pre-wrap;word-break:break-word}
+    #pboard .fu-del{flex:0 0 auto;border:0;background:#FEE2E2;color:#B91C1C;font-weight:800;border-radius:6px;padding:1px 8px;cursor:pointer;line-height:1.4}
+    #pboard .fu-empty{color:#9aa3b2;font-size:13px;padding:2px 0}
     #pboard .p-editbtn{background:#2563EB;color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer}
     #pboard .ef-cancel{background:#fff;border:1px solid #E6E9EF;border-radius:8px;padding:9px 14px;font-weight:700;font-size:14px;cursor:pointer}
   </style>
@@ -116,7 +124,7 @@
     <div class="p-tabs">
       <div class="p-tab on" data-s="진행중"><div class="n" id="pc-jin">0</div><div class="l">진행중</div></div>
       <div class="p-tab wan" data-s="완료"><div class="n" id="pc-wan">0</div><div class="l">완료</div></div>
-      <div class="p-tab bor" data-s="미진행"><div class="n" id="pc-bor">0</div><div class="l">미진행</div></div>
+      <div class="p-tab bor" data-s="미시행"><div class="n" id="pc-mis">0</div><div class="l">미시행</div></div>
       <div class="p-tab settab" data-s="제안설정"><div class="n">⚙️</div><div class="l">제안설정</div></div>
     </div>
     <input class="p-search" id="pSearch" placeholder="관리번호·소속·내용 검색">
@@ -132,7 +140,7 @@
     let P = [], pTab = "진행중", unlocked = false;
     const pq = s => document.querySelector(s);
     const pEsc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-    const pSt = s => { const d = (s.done || "").trim(); return d === "완료" ? "완료" : d === "미완료" ? "진행중" : "미진행"; };
+    const pSt = s => { const d = (s.done || "").trim(); if (d === "완료") return "완료"; if ((s.action || "").includes("미시행")) return "미시행"; if (d === "미완료") return "진행중"; return "제안접수"; };
     const pBadge = st => st === "완료" ? "b-wan" : st === "미진행" ? "b-bor" : "b-jin";
     const pNew = s => { const today = new Date(); today.setHours(0, 0, 0, 0); return (String(s.followup || "").match(/\d{2}\.\d{2}\.\d{2}|\d{6}/g) || []).some(t => { const p = t.includes(".") ? t.split(".") : [t.slice(0, 2), t.slice(2, 4), t.slice(4, 6)]; const mo = +p[1]; if (mo < 1 || mo > 12) return false; const d = new Date(2000 + +p[0], mo - 1, +p[2]); d.setHours(0, 0, 0, 0); const diff = (today - d) / 86400000; return diff >= 0 && diff <= 7; }); };
     const ckey = m => String(m).replace(/[.#$/\[\]]/g, "-");
@@ -142,8 +150,8 @@
     onValue(ref(db, "proposals"), snap => {
       const d = snap.val() || {};
       P = Object.entries(d).map(([k, v]) => ({ ...v, _key: k })).sort((a, b) => (a.no || 0) - (b.no || 0));
-      const c = { 진행중: 0, 완료: 0, 미진행: 0 }; P.forEach(s => c[pSt(s)]++);
-      pq("#pc-jin").textContent = c.진행중; pq("#pc-wan").textContent = c.완료; pq("#pc-bor").textContent = c.미진행;
+      const c = { 진행중: 0, 완료: 0, 미시행: 0, 제안접수: 0 }; P.forEach(s => c[pSt(s)]++);
+      pq("#pc-jin").textContent = c.진행중; pq("#pc-wan").textContent = c.완료; if (pq("#pc-mis")) pq("#pc-mis").textContent = c.미시행;
       pRender();
     });
     onValue(ref(db, "pcomments"), snap => { COMMENTS = snap.val() || {}; pRender(); });
@@ -191,8 +199,9 @@
               <label>시행<select data-f="action">${optHtml(OPT_ACTION, s.action)}</select></label>
               <label>완료<select data-f="done">${optHtml(OPT_DONE, s.done)}</select></label>
             </div>
-            <label>조치현황 (Follow-up)<textarea data-f="followup" rows="5">${pEsc(s.followup || "")}</textarea></label>
-            <div class="fu-add"><input class="fu-date" placeholder="8/3"><input class="fu-text" placeholder="내용 (예: 8월 시행 / 4분기 진행)"><button class="fu-btn">＋줄</button></div>
+            <label>조치현황 (Follow-up)</label>
+            <div class="fu-list">${(s.followup || "").split("\n").filter(x => x.trim()).map((ln, i) => `<div class="fu-item"><span>${pEsc(ln)}</span><button class="fu-del" data-i="${i}" title="이 줄 삭제">×</button></div>`).join("") || '<div class="fu-empty">아직 조치 이력이 없습니다.</div>'}</div>
+            <div class="fu-add"><input class="fu-date" placeholder="8/3"><input class="fu-text" placeholder="내용 (예: 8월 시행 / 4분기 진행)"><button class="fu-btn">＋줄 추가·저장</button></div>
             ${photoGroups(s)}<div class="ef-note">📷 사진 추가·삭제는 제안설정에서</div>
             <div class="ef-actions"><button class="ef-save">💾 저장</button></div>
           </div>` : `<div class="p-meta"><span class="p-chip">심사결과 <b>${pEsc(s.review || "—")}</b></span><span class="p-chip">시행 <b>${pEsc(s.action || "—")}</b></span><span class="p-chip">완료 <b>${pEsc(s.done || "—")}</b></span>${dd && dd.kind === "date" ? `<span class="p-chip">목표 <b>${pEsc(dd.target)}</b></span>` : ""}</div>
@@ -207,13 +216,23 @@
         const k = card.dataset.k, item = P.find(x => x._key === k) || {};
         card.querySelector(".p-head").onclick = () => { card.classList.toggle("open"); card.classList.contains("open") ? openKeys.add(k) : openKeys.delete(k); };
         card.querySelectorAll(".p-photo").forEach(img => img.onclick = () => openImageModal(img.src, "제안 사진"));
+        const ttl = card.querySelector(".p-ttl");
+        if (ttl && ttl.scrollWidth > ttl.clientWidth + 2) { const b = document.createElement("button"); b.className = "ttl-more"; b.textContent = "⋯"; b.title = "제목 전체 보기"; b.onclick = (e) => { e.stopPropagation(); card.classList.toggle("ttl-open"); }; ttl.after(b); }
         if (unlocked) {
-          card.querySelector(".fu-btn").onclick = () => {
-            const dEl = card.querySelector(".fu-date"), tEl = card.querySelector(".fu-text"), ta = card.querySelector("textarea[data-f=followup]");
+          const saveObj = async (followup) => { const obj = { ...item }; delete obj._key; card.querySelectorAll("[data-f]").forEach(el => obj[el.getAttribute("data-f")] = el.type === "checkbox" ? el.checked : el.value); obj.followup = followup; obj.updatedAt = Date.now(); openKeys.add(k); await set(ref(db, "proposals/" + k), obj); };
+          card.querySelector(".fu-btn").onclick = async () => {
+            const dEl = card.querySelector(".fu-date"), tEl = card.querySelector(".fu-text");
             const dv = fmtDate(dEl.value); if (!dv) return alert("날짜를 8/3 형식으로 입력하세요.");
-            ta.value = (ta.value ? ta.value.replace(/\s*$/, "") + "\n" : "") + dv + " " + tEl.value.trim();
-            dEl.value = ""; tEl.value = "";
+            if (!tEl.value.trim()) return alert("내용을 입력하세요.");
+            const lines = (item.followup || "").split("\n").filter(x => x.trim()); lines.push(dv + " " + tEl.value.trim());
+            const btn = card.querySelector(".fu-btn"); btn.disabled = true;
+            try { await saveObj(lines.join("\n")); } catch (e) { alert("저장 실패"); btn.disabled = false; }
           };
+          card.querySelectorAll(".fu-del").forEach(b => b.onclick = async () => {
+            const lines = (item.followup || "").split("\n").filter(x => x.trim()); lines.splice(+b.dataset.i, 1);
+            b.disabled = true;
+            try { await saveObj(lines.join("\n")); } catch (e) { alert("삭제 실패"); b.disabled = false; }
+          });
           card.querySelector(".ef-save").onclick = async () => {
             const obj = { ...item }; delete obj._key;
             card.querySelectorAll("[data-f]").forEach(el => obj[el.getAttribute("data-f")] = el.value);
@@ -249,6 +268,7 @@
       pRender();
     };
     pq("#pSearch").oninput = pRender;
+    document.addEventListener("click", (e) => { if (!e.target.closest(".ttl-more")) document.querySelectorAll("#pboard .p-card.ttl-open").forEach(c => c.classList.remove("ttl-open")); });
 
     // 현수막 마법
     onValue(ref(db, 'settings/banner'), (snap) => {

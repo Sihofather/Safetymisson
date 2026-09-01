@@ -33,6 +33,27 @@
   .arch .id{font-weight:800}.arch .meta{color:var(--muted);font-size:13px}
   .gate{max-width:380px;margin:60px auto;text-align:center}
   .hidden{display:none}
+  /* 투표자 명단 */
+  .vfilter{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+  .vfilter input{flex:1;min-width:150px}
+  .vfilter button{flex:0 0 auto}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{border:0;border-radius:0;background:#fff;color:var(--ink);padding:10px 14px;font-size:13px;font-weight:700}
+  .seg button.on{background:var(--green);color:#fff}
+  .vcount{font-size:13px;color:var(--muted);font-weight:700;margin-left:6px}
+  .vscroll{max-height:360px;overflow-y:auto;border:1px solid var(--line);border-radius:10px}
+  .vtable{width:100%;border-collapse:collapse;font-size:13px}
+  .vtable th{position:sticky;top:0;background:#F8FAFC;text-align:left;color:var(--muted);font-weight:700;font-size:12px;padding:9px 10px;border-bottom:2px solid var(--line)}
+  .vtable td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  .vtable tr:last-child td{border-bottom:0}
+  .vtable .nm{font-weight:800;white-space:nowrap}
+  .vtable .tm{color:var(--muted);white-space:nowrap}
+  .chbadge{display:inline-block;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .chbadge.sm{color:#B45309;background:#FDF3E3}
+  .chbadge.qr{color:#166534;background:#DCFCE7}
+  .nvchips{display:flex;flex-wrap:wrap;gap:6px;max-height:360px;overflow-y:auto}
+  .nvchip{font-size:13px;background:#FEF2F2;border:1px solid #FECACA;color:#B91C1C;border-radius:8px;padding:5px 10px;font-weight:700}
+  .vmuted{color:var(--muted);font-size:13px;padding:12px 4px}
 </style>
 </head>
 <body>
@@ -60,6 +81,20 @@
         <div class="stat"><div class="k">투표 인원</div><div class="v" id="sVotes">0</div></div>
         <div class="stat"><div class="k">대상(scores)</div><div class="v" id="sScores">0</div></div>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>투표자 명단 <span class="vcount" id="voterCount">—</span></h2>
+      <div class="vfilter">
+        <div class="seg">
+          <button id="segVoted" class="on">투표함</button>
+          <button id="segNon">미투표 (등록자)</button>
+        </div>
+        <input id="voterSearch" placeholder="이름·팀 검색">
+        <button id="refreshBtn">↻ 새로고침</button>
+        <button id="csvBtn">CSV 내려받기</button>
+      </div>
+      <div id="voterPane"><div class="vmuted">불러오는 중…</div></div>
     </div>
 
     <div class="card">
@@ -113,7 +148,55 @@ async function loadArchive(){
       <div class="meta" style="text-align:right;max-width:55%">🏆 ${top}${mx>0?` (${mx}표)`:""}</div>`;
     box.appendChild(row); });
 }
-async function init(){ await loadCurrent(); await loadArchive(); }
+async function init(){ await loadCurrent(); await loadArchive(); await loadVoters(); }
+
+// ── 투표자 명단 ──
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let VOTERS=[], SCORES=[], segMode="voted";
+async function loadVoters(){
+  const [vs,sc]=await Promise.all([ get(ref(db,"votes")), get(ref(db,"scores")) ]);
+  const votes=vs.val()||{}, scores=sc.val()||{};
+  VOTERS=Object.keys(votes).map(n=>({name:n,team:votes[n]&&votes[n].team,selected:votes[n]&&votes[n].selected,channel:votes[n]&&votes[n].channel,time:votes[n]&&votes[n].time}));
+  SCORES=Object.keys(scores);
+  renderVoters();
+}
+function renderVoters(){
+  const q=($("#voterSearch").value||"").replace(/\s+/g,"").toLowerCase();
+  const pane=$("#voterPane");
+  if(segMode==="voted"){
+    let rows=VOTERS.slice().sort((a,b)=>a.name.localeCompare(b.name,"ko"));
+    if(q) rows=rows.filter(r=>((r.name||"")+(r.team||"")).replace(/\s+/g,"").toLowerCase().includes(q));
+    $("#voterCount").textContent="총 "+VOTERS.length+"명 투표";
+    if(!rows.length){ pane.innerHTML='<div class="vmuted">'+(VOTERS.length?"검색 결과가 없습니다.":"아직 투표한 사람이 없습니다.")+'</div>'; return; }
+    let h='<div class="vscroll"><table class="vtable"><thead><tr><th>이름</th><th>팀</th><th>선택한 표어</th><th>채널</th><th>시간</th></tr></thead><tbody>';
+    rows.forEach(r=>{ const ch=r.channel==="qr"?"qr":"sm";
+      h+=`<tr><td class="nm">${esc(r.name)}</td><td class="tm">${esc(r.team||"—")}</td><td>${esc(r.selected||"")}</td>`
+       + `<td><span class="chbadge ${ch}">${ch==="qr"?"QR":"세이프미"}</span></td><td class="tm">${esc(r.time||"")}</td></tr>`; });
+    pane.innerHTML=h+'</tbody></table></div>';
+  } else {
+    const voted=new Set(VOTERS.map(v=>v.name));
+    let non=SCORES.filter(n=>!voted.has(n)).sort((a,b)=>a.localeCompare(b,"ko"));
+    if(q) non=non.filter(n=>n.replace(/\s+/g,"").toLowerCase().includes(q));
+    $("#voterCount").textContent="미투표 "+non.length+"명 / 등록 "+SCORES.length+"명";
+    if(!non.length){ pane.innerHTML='<div class="vmuted">'+(SCORES.length?"등록자 전원이 투표했거나 검색 결과가 없습니다.":"등록 명부(scores)가 비어 있습니다.")+'</div>'; return; }
+    pane.innerHTML='<div class="nvchips">'+non.map(n=>`<span class="nvchip">${esc(n)}</span>`).join("")+'</div>';
+  }
+}
+function downloadCSV(){
+  if(!VOTERS.length) return Swal.fire('알림','내려받을 투표 데이터가 없습니다.','info');
+  const rows=[["이름","팀","선택한 표어","채널","시간"]];
+  VOTERS.slice().sort((a,b)=>a.name.localeCompare(b.name,"ko"))
+    .forEach(r=>rows.push([r.name,r.team||"",r.selected||"",r.channel==="qr"?"QR":"세이프미",r.time||""]));
+  const csv="﻿"+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download="투표자명단.csv"; a.click(); URL.revokeObjectURL(a.href);
+}
+$("#segVoted").onclick=()=>{ segMode="voted"; $("#segVoted").classList.add("on"); $("#segNon").classList.remove("on"); renderVoters(); };
+$("#segNon").onclick=()=>{ segMode="non"; $("#segNon").classList.add("on"); $("#segVoted").classList.remove("on"); renderVoters(); };
+$("#voterSearch").oninput=renderVoters;
+$("#refreshBtn").onclick=loadVoters;
+$("#csvBtn").onclick=downloadCSV;
 
 $("#closeBtn").onclick=async()=>{
   const id=$("#eid").value.trim();

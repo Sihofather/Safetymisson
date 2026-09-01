@@ -1,0 +1,13 @@
+# Firebase 관련 (규칙/함수는 배포.bat로 따로 배포, 웹 저장소에는 불포함)
+firebase.json
+.firebaserc
+database.rules.json
+storage.rules
+functions/
+.firebase/
+firebase-debug.log
+
+# 로컬 전용 파일
+*.bat
+*.md
+deploy_log.txt
