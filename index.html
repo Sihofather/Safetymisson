@@ -204,7 +204,7 @@
             </div>
             <label>조치현황 (Follow-up)</label>
             <div class="fu-list">${(s.followup || "").split("\n").filter(x => x.trim()).map(ln => `<div class="fu-item"><span>${pEsc(ln)}</span></div>`).join("") || '<div class="fu-empty">아직 조치 이력이 없습니다.</div>'}</div>
-            <div class="fu-add"><input class="fu-date" placeholder="8/3"><input class="fu-text" placeholder="내용 (예: 8월 시행 / 4분기 진행)"><button class="fu-btn">＋줄 추가·저장</button></div>
+            <div class="fu-add"><input class="fu-date" placeholder="8/3"><input class="fu-text" placeholder="내용 (예: 8월 시행 / 4분기 진행)"><button class="fu-btn">＋줄 추가</button></div>
             ${photoGroups(s)}<div class="ef-note">📷 사진 추가·삭제는 제안설정에서 · 바꾸면 자동 저장됩니다</div>
           </div>` : `<div class="p-meta"><span class="p-chip">심사결과 <b>${pEsc(s.review || "—")}</b></span><span class="p-chip">시행 <b>${pEsc(s.action || "—")}</b></span><span class="p-chip">완료 <b>${pEsc(s.done || "—")}</b></span>${dd && dd.kind === "date" ? `<span class="p-chip">목표 <b>${pEsc(dd.target)}</b></span>` : ""}</div>
           <h4>조치현황 (Follow-up)</h4><div class="p-follow">${pEsc(s.followup || "—")}</div>${photoGroups(s)}
