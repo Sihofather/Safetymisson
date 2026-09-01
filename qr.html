@@ -50,11 +50,9 @@
     </div>
 
     <div class="mission-group">
-      <div class="group-title">👨‍💼 나의 제안 (관리자 승인)</div>
-      <p style="font-size: 15px; color: #555; margin-bottom: 5px;">👇 아래 <b>QR 이미지를 직접 터치</b>해서<br>내용을 제출한 뒤, 관리자에게 승인을 요청하세요!</p>
-      <img src="제안QR.jpg" alt="제안 QR" class="qr-image" onclick="window.open('https://m.site.naver.com/1Y8hh', '_blank')">
-      <button class="mission-btn btn-admin" id="btn-system">아차사고 승인 요청</button>
-      <button class="mission-btn btn-admin" id="btn-propose">제안제출 승인 요청</button>
+      <div class="group-title">👨‍💼 나의 제안 접수</div>
+      <p style="font-size: 15px; color: #555; margin-bottom: 5px;">👇 아래 <b>이미지를 눌러</b> 제안을 접수하세요!</p>
+      <img src="제안QR.jpg" alt="제안 접수" class="qr-image" onclick="window.location.href='제안접수.html'">
 
       <hr style="border: 0; border-top: 2px dashed #ccc; margin: 25px 0;">
       
@@ -333,8 +331,6 @@
     document.getElementById('btn-guide').onclick = () => handleSelfCheck('안전가이드 활동');
     document.getElementById('btn-stretch').onclick = () => handleSelfCheck('작업 전 스트레칭');
     document.getElementById('btn-stop').onclick = () => handleSelfCheck('작업 전 1분 멈춤');
-    document.getElementById('btn-system').onclick = () => handleAdminRequest('아차사고');
-    document.getElementById('btn-propose').onclick = () => handleAdminRequest('제안제출');
   </script>
 </body>
 </html>

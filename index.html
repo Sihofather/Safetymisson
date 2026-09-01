@@ -22,7 +22,9 @@
     #pboard .p-sub{color:#5B6678;font-size:13px}
     #pboard .p-edit{flex:0 0 auto;font-size:13px;font-weight:800;color:#fff;background:#2563EB;border:0;border-radius:9px;padding:8px 12px;cursor:pointer;white-space:nowrap;margin-top:3px}
     #pboard .p-tabs{display:flex;gap:8px;margin:14px 0}
-    #pboard .p-tab{flex:1;background:#fff;border:1.5px solid #E6E9EF;border-radius:12px;padding:12px 6px;cursor:pointer;text-align:center}
+    #pboard .p-tab{position:relative;flex:1;background:#fff;border:1.5px solid #E6E9EF;border-radius:12px;padding:12px 6px;cursor:pointer;text-align:center}
+    #pboard .tab-new{display:none;position:absolute;top:-7px;right:6px;background:#EF4444;color:#fff;font-size:9px;font-weight:900;letter-spacing:.06em;padding:1px 5px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+    #pboard .tab-new.show{display:inline-block}
     #pboard .p-tab .n{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
     #pboard .p-tab .l{font-size:12px;color:#5B6678;font-weight:700;margin-top:4px}
     #pboard .p-tab.on{border-color:#D97706;box-shadow:0 0 0 3px rgba(217,119,6,.12)}#pboard .p-tab.on .n{color:#D97706}
@@ -122,9 +124,9 @@
       <button class="p-edit" id="pEdit" title="현재 화면에서 수정 (비밀번호 0000)">✏️ 수정</button>
     </div>
     <div class="p-tabs">
-      <div class="p-tab on" data-s="진행중"><div class="n" id="pc-jin">0</div><div class="l">진행중</div></div>
-      <div class="p-tab wan" data-s="완료"><div class="n" id="pc-wan">0</div><div class="l">완료</div></div>
-      <div class="p-tab bor" data-s="미시행"><div class="n" id="pc-mis">0</div><div class="l">미시행</div></div>
+      <div class="p-tab on" data-s="진행중"><span class="tab-new">NEW</span><div class="n" id="pc-jin">0</div><div class="l">진행중</div></div>
+      <div class="p-tab wan" data-s="완료"><span class="tab-new">NEW</span><div class="n" id="pc-wan">0</div><div class="l">완료</div></div>
+      <div class="p-tab bor" data-s="미시행"><span class="tab-new">NEW</span><div class="n" id="pc-mis">0</div><div class="l">미시행</div></div>
       <div class="p-tab settab" data-s="제안설정"><div class="n">⚙️</div><div class="l">제안설정</div></div>
     </div>
     <input class="p-search" id="pSearch" placeholder="관리번호·소속·내용 검색">
@@ -150,8 +152,9 @@
     onValue(ref(db, "proposals"), snap => {
       const d = snap.val() || {};
       P = Object.entries(d).map(([k, v]) => ({ ...v, _key: k })).sort((a, b) => (a.no || 0) - (b.no || 0));
-      const c = { 진행중: 0, 완료: 0, 미시행: 0, 제안접수: 0 }; P.forEach(s => c[pSt(s)]++);
+      const c = { 진행중: 0, 완료: 0, 미시행: 0, 제안접수: 0 }, nwt = {}; P.forEach(s => { const t = pSt(s); c[t]++; if (pNew(s)) nwt[t] = true; });
       pq("#pc-jin").textContent = c.진행중; pq("#pc-wan").textContent = c.완료; if (pq("#pc-mis")) pq("#pc-mis").textContent = c.미시행;
+      document.querySelectorAll("#pboard .p-tab[data-s]").forEach(t => { const b = t.querySelector(".tab-new"); if (b) b.classList.toggle("show", !!nwt[t.dataset.s]); });
       pRender();
     });
     onValue(ref(db, "pcomments"), snap => { COMMENTS = snap.val() || {}; pRender(); });
@@ -216,7 +219,7 @@
         card.querySelector(".p-head").onclick = () => { card.classList.toggle("open"); card.classList.contains("open") ? openKeys.add(k) : openKeys.delete(k); };
         card.querySelectorAll(".p-photo").forEach(img => img.onclick = () => openImageModal(img.src, "제안 사진"));
         const ttl = card.querySelector(".p-ttl");
-        if (ttl && ttl.scrollWidth > ttl.clientWidth + 2) { const b = document.createElement("button"); b.className = "ttl-more"; b.textContent = "⋯"; b.title = "제목 전체 보기"; b.onclick = (e) => { e.stopPropagation(); card.classList.toggle("ttl-open"); }; ttl.after(b); }
+        if (ttl && ttl.scrollWidth > ttl.clientWidth + 2) { const b = document.createElement("button"); b.className = "ttl-more"; b.textContent = "펼치기"; b.title = "제목 전체 보기"; b.onclick = (e) => { e.stopPropagation(); b.textContent = card.classList.toggle("ttl-open") ? "접기" : "펼치기"; }; ttl.after(b); }
         if (unlocked) {
           const saveObj = async (followup) => { const obj = { ...item }; delete obj._key; card.querySelectorAll("[data-f]").forEach(el => obj[el.getAttribute("data-f")] = el.type === "checkbox" ? el.checked : el.value); obj.followup = followup; obj.updatedAt = Date.now(); openKeys.add(k); await set(ref(db, "proposals/" + k), obj); };
           card.querySelector(".fu-btn").onclick = async () => {
@@ -263,7 +266,7 @@
       pRender();
     };
     pq("#pSearch").oninput = pRender;
-    document.addEventListener("click", (e) => { if (!e.target.closest(".ttl-more")) document.querySelectorAll("#pboard .p-card.ttl-open").forEach(c => c.classList.remove("ttl-open")); });
+    document.addEventListener("click", (e) => { if (!e.target.closest(".ttl-more")) document.querySelectorAll("#pboard .p-card.ttl-open").forEach(c => { c.classList.remove("ttl-open"); const bb = c.querySelector(".ttl-more"); if (bb) bb.textContent = "펼치기"; }); });
 
     // 현수막 마법
     onValue(ref(db, 'settings/banner'), (snap) => {
