@@ -80,7 +80,7 @@ import { db, ref, onValue } from "./firebase-setup.js";
 let ITEMS=[], tab="진행중";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const statusOf=s=>{const d=(s.done||"").trim();if(d==="완료")return"완료";if((s.action||"").includes("미시행"))return"미시행";if(d==="미완료")return"진행중";return"제안접수";};
+const statusOf=s=>{const d=(s.done||"").trim();if((s.action||"").includes("미시행"))return"미시행";if(d==="완료")return"완료";if(d==="미완료")return"진행중";return"제안접수";};
 const badgeOf=st=>st==="완료"?"b-wan":st==="미진행"?"b-bor":"b-jin";
 const newOf=s=>{const today=new Date();today.setHours(0,0,0,0);return (String(s.followup||"").match(/\d{2}\.\d{2}\.\d{2}|\d{6}/g)||[]).some(t=>{const p=t.includes(".")?t.split("."):[t.slice(0,2),t.slice(2,4),t.slice(4,6)];const mo=+p[1];if(mo<1||mo>12)return false;const d=new Date(2000+ +p[0],mo-1,+p[2]);d.setHours(0,0,0,0);const diff=(today-d)/86400000;return diff>=0&&diff<=7;});};
 const normPh=p=>typeof p==="string"?{url:p,kind:"before"}:p;
@@ -106,7 +106,7 @@ function render(){
   const box=$("#list");
   if(!rows.length){ box.innerHTML='<div class="empty">'+(ITEMS.length?"해당하는 제안이 없습니다.":"등록된 제안이 없습니다. (제안설정에서 엑셀을 가져오세요)")+'</div>'; postHeight(); return; }
   box.innerHTML=rows.map(s=>{
-    const st=statusOf(s),nw=newOf(s),dd=st==="완료"?null:ddayOf(s);
+    const st=statusOf(s),nw=newOf(s),dd=(st==="완료"||st==="미시행")?null:ddayOf(s);
     return `<div class="card${nw?' isnew':''}">${nw?'<span class="newb">NEW</span>':''}
       <div class="head">
         <span class="id">${esc(s.mgmtNo||"")}</span>

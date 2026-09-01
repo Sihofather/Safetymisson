@@ -144,7 +144,7 @@ const monthOptions=v=>{let h='<option value=""'+(!v?' selected':'')+'>(미지정
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const keyOf=id=>String(id||"").trim().replace(/[.#$/\[\]]/g,"-");
-const statusOf=s=>{const d=(s.done||"").trim();if(d==="완료")return"완료";if((s.action||"").includes("미시행"))return"미시행";if(d==="미완료")return"진행중";return"제안접수";};
+const statusOf=s=>{const d=(s.done||"").trim();if((s.action||"").includes("미시행"))return"미시행";if(d==="완료")return"완료";if(d==="미완료")return"진행중";return"제안접수";};
 const badgeOf=st=>st==="완료"?"b-wan":st==="미진행"?"b-bor":"b-jin";
 const OPT_REVIEW=["","최우수","우수","장려","노력","참가","본사 제출","불채택","보류"], OPT_ACTION=["","시행","검토후 시행","미시행"];
 const PRIZE={최우수:[1000000,2000000],우수:[500000,1000000],장려:[150000,300000],노력:[30000,100000],참가:[5000,10000]}; // [단일제안,그룹제안]
@@ -202,7 +202,7 @@ function render(){
   const box=$("#list");
   if(!rows.length){box.innerHTML='<div class="card" style="text-align:center;color:var(--muted)">'+(ITEMS.length?"이 상태의 제안이 없습니다.":"등록된 제안이 없습니다. ＋신규작성 탭에서 추가하거나 엑셀을 가져오세요.")+'</div>';return;}
   box.innerHTML=rows.map(s=>{
-    const st=statusOf(s),k=esc(s._key),dd=st==="완료"?null:ddayOf(s);
+    const st=statusOf(s),k=esc(s._key),dd=(st==="완료"||st==="미시행")?null:ddayOf(s);
     return `<div class="card" data-k="${k}">
       <div class="item-head">
         <span class="id">${esc(s.mgmtNo||s._key)}</span>
