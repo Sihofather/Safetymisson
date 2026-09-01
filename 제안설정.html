@@ -6,7 +6,7 @@
 <title>제안 설정 · 조치현황 관리</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <style>
   :root{--ink:#1A2230;--muted:#5B6678;--line:#E6E9EF;--bg:#F4F6FA;--blue:#2563EB;--green:#15803D;--amber:#D97706;--red:#DC2626;--gray:#6B7280}
   *{box-sizing:border-box}html,body{margin:0}
@@ -87,7 +87,7 @@
     <h1>제안 설정 · 조치현황 관리</h1>
     <div class="sub">제안별 심사결과·시행여부·완료여부·조치현황(Follow-up)을 관리합니다.</div>
 
-    <div style="margin-bottom:12px"><button class="primary" id="xlsBtn">⬇ 엑셀 다운로드</button></div>
+    <div style="margin-bottom:12px"><button class="primary" id="xlsBtnStatus">⬇ 제안 현황 엑셀</button><button class="primary" id="xlsBtnPrize" style="margin-left:8px">⬇ 제안 상금 엑셀</button></div>
     <div class="p-tabs" id="tabs">
       <button class="p-tab on" data-t="진행중">진행중 <b id="t-jin">0</b></button>
       <button class="p-tab" data-t="완료">완료 <b id="t-wan">0</b></button>
@@ -287,31 +287,59 @@ async function uploadPhotos(inp){
   }catch(e){ console.error(e); Swal.fire('오류','사진 업로드 실패','error'); lbl.firstChild.textContent=orig; }
 }
 function monthOf(s){ if(s.month)return s.month; const m=(s.followup||"").match(/\d{2}\.(\d{2})\.\d{2}/); return m?parseInt(m[1],10):""; }
-function downloadExcel(){
+function downloadStatusExcel(){
   if(!ITEMS.length)return Swal.fire('알림','내려받을 데이터가 없습니다.','info');
   if(typeof XLSX==="undefined")return Swal.fire('오류','엑셀 모듈을 불러오지 못했습니다. 인터넷 연결을 확인하세요.','error');
   const sorted=ITEMS.slice().sort((a,b)=>(a.no||0)-(b.no||0));
   const byMonth=(a,b)=>(parseInt(a)||99)-(parseInt(b)||99);
   const wb=XLSX.utils.book_new();
-  // 1) 제안 통합 정리 (월별 시트)
   const H=["No","년","월","관리번호","소속","이름","제안구분","제안내용","심사결과","시행여부","조치현황","완료여부"];
+  const cols=[{wch:5},{wch:6},{wch:5},{wch:14},{wch:12},{wch:8},{wch:8},{wch:50},{wch:10},{wch:12},{wch:40},{wch:8}];
   const g={};
   sorted.forEach(s=>{const mo=monthOf(s),key=mo?mo+"월":"미지정";(g[key]=g[key]||[]).push([s.no||"",s.year||"",mo||"",s.mgmtNo||"",s.team||"",s.proposer||"",s.ptype||"",s.content||"",s.review||"",s.action||"",s.followup||"",s.done||""]);});
-  Object.keys(g).sort(byMonth).forEach(n=>{const ws=XLSX.utils.aoa_to_sheet([H,...g[n]]);ws["!cols"]=[{wch:5},{wch:6},{wch:5},{wch:14},{wch:12},{wch:8},{wch:8},{wch:50},{wch:10},{wch:12},{wch:40},{wch:8}];XLSX.utils.book_append_sheet(wb,ws,n);});
-  // 2) 제안 상금 내역 (월별 시트 · 사람별 집계)
+  Object.keys(g).sort(byMonth).forEach(n=>XLSX.utils.book_append_sheet(wb,xlWrite([H,...g[n]],cols,[7,10]),n));
+  XLSX.writeFile(wb,"제안 현황.xlsx");
+}
+// 셀 줄바꿈 + 행 높이 자동 (xlsx-js-style). wrapCols: 왼쪽정렬할 열 인덱스
+function xlWrite(aoa,cols,wrapCols){
+  const ws=XLSX.utils.aoa_to_sheet(aoa); ws["!cols"]=cols;
+  const rng=XLSX.utils.decode_range(ws["!ref"]); const rows=[];
+  for(let r=rng.s.r;r<=rng.e.r;r++){
+    let maxLines=1;
+    for(let c=rng.s.c;c<=rng.e.c;c++){
+      const cell=ws[XLSX.utils.encode_cell({r,c})]; if(!cell)continue;
+      const head=(r===0);
+      cell.s={alignment:{wrapText:true,vertical:"top",horizontal:head?"center":(wrapCols.includes(c)?"left":"center")}};
+      if(head){cell.s.font={bold:true};cell.s.fill={fgColor:{rgb:"E8EEF5"}};}
+      const wch=(cols[c]&&cols[c].wch)||10, txt=String(cell.v==null?"":cell.v);
+      const lines=txt.split("\n").reduce((n,seg)=>n+Math.max(1,Math.ceil((seg.length||1)/Math.max(3,wch*0.55))),0);
+      if(lines>maxLines)maxLines=lines;
+    }
+    rows[r]={hpt:Math.min(409,Math.max(18,maxLines*15))};
+  }
+  ws["!rows"]=rows; return ws;
+}
+function downloadPrizeExcel(){
+  if(!ITEMS.length)return Swal.fire('알림','내려받을 데이터가 없습니다.','info');
+  if(typeof XLSX==="undefined")return Swal.fire('오류','엑셀 모듈을 불러오지 못했습니다. 인터넷 연결을 확인하세요.','error');
+  const sorted=ITEMS.slice().sort((a,b)=>(a.no||0)-(b.no||0));
+  const byMonth=(a,b)=>(parseInt(a)||99)-(parseInt(b)||99);
+  const wb=XLSX.utils.book_new();
   const PH=["No","년","월","관리번호","소속","이름","심사결과","금액"];
+  const cols=[{wch:5},{wch:6},{wch:5},{wch:22},{wch:12},{wch:10},{wch:16},{wch:12}];
   const pm={};
-  sorted.forEach(s=>{const a=normAward(s.review);if(a!=="참가"&&a!=="노력")return;/* 장려 이상은 본사 진행이라 우리 상금내역 제외 */const mo=monthOf(s),mk=mo?mo:"미지정",person=(s.proposer||"").trim()||"(미기재)";
+  sorted.forEach(s=>{const a=normAward(s.review);if(a!=="참가"&&a!=="노력")return;/* 장려 이상은 본사 진행이라 제외 */const mo=monthOf(s),mk=mo?mo:"미지정",person=(s.proposer||"").trim()||"(미기재)";
     pm[mk]=pm[mk]||{}; const p=pm[mk][person]=pm[mk][person]||{team:s.team||"",year:s.year||2026,counts:{},amount:0,nos:[]};
     p.counts[a]=(p.counts[a]||0)+1; p.amount+=PRIZE[a][isGroupProp(s)?1:0]; p.nos.push(s.mgmtNo||""); if(!p.team&&s.team)p.team=s.team;});
-  Object.keys(pm).sort(byMonth).forEach(mk=>{
+  const keys=Object.keys(pm).sort(byMonth);
+  if(!keys.some(mk=>Object.keys(pm[mk]).length))return Swal.fire('알림','상금(참가·노력) 대상 제안이 없습니다.','info');
+  keys.forEach(mk=>{
     const rows=[]; let i=1;
     Object.keys(pm[mk]).forEach(person=>{const p=pm[mk][person];const lab=AWARD_ORDER.filter(k=>p.counts[k]).map(k=>k+" "+p.counts[k]).join(", ");
       rows.push([i++,p.year,mk==="미지정"?"":mk,p.nos.join(", "),p.team,person,lab,p.amount]);});
     if(!rows.length)return;
-    const ws=XLSX.utils.aoa_to_sheet([PH,...rows]);ws["!cols"]=[{wch:5},{wch:6},{wch:5},{wch:22},{wch:12},{wch:10},{wch:16},{wch:12}];
-    XLSX.utils.book_append_sheet(wb,ws,"상금 "+(mk==="미지정"?"미지정":mk+"월"));});
-  XLSX.writeFile(wb,"제안 통합 정리.xlsx");
+    XLSX.utils.book_append_sheet(wb,xlWrite([PH,...rows],cols,[3,6]),"상금 "+(mk==="미지정"?"미지정":mk+"월"));});
+  XLSX.writeFile(wb,"제안 상금.xlsx");
 }
 async function removePhoto(k,i){
   const c=await Swal.fire({icon:'warning',title:'사진 삭제',showCancelButton:true,confirmButtonText:'삭제',cancelButtonText:'취소',confirmButtonColor:'#DC2626'}); if(!c.isConfirmed)return;
@@ -354,7 +382,7 @@ $("#createBtn").onclick=async()=>{
   setTab(done==="완료"?"완료":done==="미완료"?"진행중":"제안접수");
 };
 $("#search").oninput=render;
-$("#xlsBtn").onclick=downloadExcel;
+$("#xlsBtnStatus").onclick=downloadStatusExcel; $("#xlsBtnPrize").onclick=downloadPrizeExcel;
 
 // ── CSV 가져오기 ──
 function parseCSV(text){
