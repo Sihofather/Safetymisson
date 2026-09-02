@@ -205,8 +205,7 @@
               <label>완료<select data-f="done">${optHtml(OPT_DONE, s.done)}</select></label>
             </div>
             <label>조치현황 (Follow-up)</label>
-            <div class="fu-list">${(s.followup || "").split("\n").filter(x => x.trim()).map((ln, i) => `<div class="fu-item"><span>${pEsc(ln)}</span><button class="fu-del" data-i="${i}" title="이 줄 삭제">×</button></div>`).join("") || '<div class="fu-empty">아직 조치 이력이 없습니다.</div>'}</div>
-            <div class="fu-add"><input class="fu-date" placeholder="8/3"><input class="fu-text" placeholder="내용 (예: 8월 시행 / 4분기 진행)"><button class="fu-btn">＋줄 추가</button></div>
+            <textarea data-f="followup" rows="5" placeholder="예: 26.08.03 스냅링 구매 완료&#10;26.09.01 4분기 진행 예정">${pEsc(s.followup || "")}</textarea>
             ${photoGroups(s)}<div class="ef-note">📷 사진 추가·삭제는 제안설정에서 · 바꾸면 자동 저장됩니다</div>
           </div>` : `<div class="p-meta"><span class="p-chip">심사결과 <b>${pEsc(s.review || "—")}</b></span><span class="p-chip">시행 <b>${pEsc(s.action || "—")}</b></span><span class="p-chip">완료 <b>${pEsc(s.done || "—")}</b></span>${dd && dd.kind === "date" ? `<span class="p-chip">목표 <b>${pEsc(dd.target)}</b></span>` : ""}</div>
           <h4>조치현황 (Follow-up)</h4><div class="p-follow">${pEsc(s.followup || "—")}</div>${photoGroups(s)}
@@ -223,22 +222,9 @@
         const ttl = card.querySelector(".p-ttl");
         if (ttl && ttl.scrollWidth > ttl.clientWidth + 2) { const b = document.createElement("button"); b.className = "ttl-more"; b.textContent = "펼치기"; b.title = "제목 전체 보기"; b.onclick = (e) => { e.stopPropagation(); b.textContent = card.classList.toggle("ttl-open") ? "접기" : "펼치기"; }; ttl.after(b); }
         if (unlocked) {
-          const saveObj = async (followup) => { const obj = { ...item }; delete obj._key; card.querySelectorAll("[data-f]").forEach(el => obj[el.getAttribute("data-f")] = el.type === "checkbox" ? el.checked : el.value); obj.followup = followup; obj.updatedAt = Date.now(); openKeys.add(k); await set(ref(db, "proposals/" + k), obj); };
-          card.querySelector(".fu-btn").onclick = async () => {
-            const dEl = card.querySelector(".fu-date"), tEl = card.querySelector(".fu-text");
-            const dv = fmtDate(dEl.value); if (!dv) return alert("날짜를 8/3 형식으로 입력하세요.");
-            if (!tEl.value.trim()) return alert("내용을 입력하세요.");
-            const lines = (item.followup || "").split("\n").filter(x => x.trim()); lines.push(dv + " " + tEl.value.trim());
-            const btn = card.querySelector(".fu-btn"); btn.disabled = true;
-            try { await saveObj(lines.join("\n")); } catch (e) { alert("저장 실패"); btn.disabled = false; }
-          };
-          card.querySelectorAll(".fu-del").forEach(b => b.onclick = async () => {
-            const lines = (item.followup || "").split("\n").filter(x => x.trim()); lines.splice(+b.dataset.i, 1);
-            b.disabled = true;
-            try { await saveObj(lines.join("\n")); } catch (e) { alert("삭제 실패"); b.disabled = false; }
-          });
+          const saveObj = async () => { const obj = { ...item }; delete obj._key; card.querySelectorAll("[data-f]").forEach(el => obj[el.getAttribute("data-f")] = el.type === "checkbox" ? el.checked : el.value); obj.updatedAt = Date.now(); openKeys.add(k); await set(ref(db, "proposals/" + k), obj); };
           card.querySelectorAll("[data-f]").forEach(el => el.addEventListener("change", async () => {
-            try { await saveObj(item.followup); } catch (e) { alert("저장 실패"); }
+            try { await saveObj(); } catch (e) { alert("저장 실패"); }
           }));
         } else {
           card.querySelector(".pcm-send").onclick = async () => {

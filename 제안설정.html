@@ -234,8 +234,7 @@ function render(){
         </div>
       </div>
       <div class="mt"><label>조치현황 / 비고 (Follow-up)</label>
-        <div class="fu-list">${(s.followup||"").split("\n").filter(x=>x.trim()).map((ln,i)=>`<div class="fu-item"><span>${esc(ln)}</span><button class="fu-del" data-k="${k}" data-i="${i}" title="이 줄 삭제">×</button></div>`).join("")||'<div class="fu-empty">아직 조치 이력이 없습니다.</div>'}</div>
-        <div class="fu-add"><input class="fu-date" placeholder="8/3"><input class="fu-text" placeholder="내용 (예: 4분기 진행 예정)"><button type="button" class="fu-btn" data-k="${k}">＋줄 추가</button></div></div>
+        <textarea data-f="followup" rows="5" placeholder="예: 26.08.03 스냅링 구매 완료&#10;26.09.01 4분기 진행 예정">${esc(s.followup||"")}</textarea></div>
       <div class="mt"><label>📷 사진 (조치 전 / 조치 후)</label>
         ${["before","after"].map(kind=>{const lb=kind==="before"?"조치 전":"조치 후";const arr=(s.photos||[]).map((p,i)=>({p:normPh(p),i})).filter(o=>(o.p.kind||"before")===kind);return `<div class="pg"><div class="pg-l">${lb}</div><div class="ph-wrap">${arr.map(o=>`<span class="ph-item"><img src="${esc(o.p.url)}" data-view="${esc(o.p.url)}"><button class="danger ph-x" data-rm="${o.i}" data-k="${k}">×</button></span>`).join("")}<label class="ph-up">＋ ${lb}<input type="file" accept="image/*" multiple class="ph-file" data-k="${k}" data-kind="${kind}" hidden></label></div></div>`;}).join("")}
       </div>
@@ -248,8 +247,6 @@ function render(){
   box.querySelectorAll(".ph-file").forEach(inp=>inp.onchange=()=>uploadPhotos(inp));
   box.querySelectorAll(".ph-x").forEach(b=>b.onclick=()=>removePhoto(b.dataset.k,+b.dataset.rm));
   box.querySelectorAll("[data-view]").forEach(img=>img.onclick=()=>openImageModal(img.dataset.view));
-  box.querySelectorAll(".fu-btn").forEach(b=>b.onclick=async()=>{const card=b.closest(".card"),k=card.dataset.k,item=ITEMS.find(x=>x._key===k)||{};const dv=fmtDate(card.querySelector(".fu-date").value);if(!dv)return Swal.fire('알림','날짜를 8/3 형식으로 입력하세요.','warning');const txt=card.querySelector(".fu-text").value.trim();if(!txt)return Swal.fire('알림','내용을 입력하세요.','warning');const lines=(item.followup||"").split("\n").filter(x=>x.trim());lines.push(dv+" "+txt);await fuSave(card,k,item,lines.join("\n"));});
-  box.querySelectorAll(".fu-del").forEach(b=>b.onclick=async()=>{const card=b.closest(".card"),k=card.dataset.k,item=ITEMS.find(x=>x._key===k)||{};const lines=(item.followup||"").split("\n").filter(x=>x.trim());lines.splice(+b.dataset.i,1);await fuSave(card,k,item,lines.join("\n"));});
   box.querySelectorAll(".aibtn").forEach(b=>b.onclick=()=>aiPolish(b.closest(".card")));
   renderComments();
 }
