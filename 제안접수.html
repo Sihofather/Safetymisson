@@ -68,7 +68,7 @@
       <div class="hint">현장 사진을 함께 올리면 검토에 도움이 됩니다.</div>
     </div>
     <button class="submit" id="submitBtn">제안 제출하기</button>
-    <div class="hint" style="text-align:center;margin-top:12px">제출하면 안전환경지원팀에서 검토 후 진행합니다.</div>
+    <div class="hint" style="text-align:center;margin-top:12px">제출하면 안전순찰 회의 시 검토 후 진행됩니다.</div>
   </div>
 
 <script type="module">
@@ -139,7 +139,7 @@ $("#submitBtn").onclick = async () => {
     if (photos.length) rec.photos = photos;
     await set(ref(db, "proposals/" + mgmtNo), rec);
 
-    await Swal.fire("접수 완료!", "소중한 제안 감사합니다. 검토 후 진행하겠습니다.", "success");
+    await Swal.fire("접수 완료!", "소중한 제안 감사합니다. 안전순찰 회의 시 검토 후 진행됩니다.", "success");
     location.reload();
   } catch (e) {
     console.error(e);
