@@ -30,6 +30,7 @@
     #pboard .p-tab.on{border-color:#D97706;box-shadow:0 0 0 3px rgba(217,119,6,.12)}#pboard .p-tab.on .n{color:#D97706}
     #pboard .p-tab.wan.on{border-color:#15803D;box-shadow:0 0 0 3px rgba(21,128,61,.12)}#pboard .p-tab.wan.on .n{color:#15803D}
     #pboard .p-tab.bor.on{border-color:#6B7280;box-shadow:0 0 0 3px rgba(107,114,128,.14)}#pboard .p-tab.bor.on .n{color:#6B7280}
+    #pboard .p-tab.jeb.on{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}#pboard .p-tab.jeb.on .n{color:#2563EB}
     #pboard .p-search{width:100%;border:1.5px solid #E6E9EF;border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;outline:none;margin-bottom:12px;box-sizing:border-box}
     #pboard .p-card{position:relative;background:#fff;border:1px solid #E6E9EF;border-radius:12px;margin-bottom:8px;overflow:hidden}
     #pboard .p-head{display:flex;align-items:center;gap:9px;padding:12px 14px;cursor:pointer}
@@ -127,6 +128,7 @@
       <div class="p-tab on" data-s="진행중"><span class="tab-new">NEW</span><div class="n" id="pc-jin">0</div><div class="l">진행중</div></div>
       <div class="p-tab wan" data-s="완료"><span class="tab-new">NEW</span><div class="n" id="pc-wan">0</div><div class="l">완료</div></div>
       <div class="p-tab bor" data-s="미시행"><span class="tab-new">NEW</span><div class="n" id="pc-mis">0</div><div class="l">미시행</div></div>
+      <div class="p-tab jeb" data-s="제안접수"><span class="tab-new">NEW</span><div class="n" id="pc-jeb">0</div><div class="l">접수 중</div></div>
       <div class="p-tab settab" data-s="제안설정"><div class="n">⚙️</div><div class="l">제안설정</div></div>
     </div>
     <input class="p-search" id="pSearch" placeholder="관리번호·소속·내용 검색">
@@ -153,7 +155,7 @@
       const d = snap.val() || {};
       P = Object.entries(d).map(([k, v]) => ({ ...v, _key: k })).sort((a, b) => (a.no || 0) - (b.no || 0));
       const c = { 진행중: 0, 완료: 0, 미시행: 0, 제안접수: 0 }, nwt = {}; P.forEach(s => { const t = pSt(s); c[t]++; if (pNew(s)) nwt[t] = true; });
-      pq("#pc-jin").textContent = c.진행중; pq("#pc-wan").textContent = c.완료; if (pq("#pc-mis")) pq("#pc-mis").textContent = c.미시행;
+      pq("#pc-jin").textContent = c.진행중; pq("#pc-wan").textContent = c.완료; if (pq("#pc-mis")) pq("#pc-mis").textContent = c.미시행; if (pq("#pc-jeb")) pq("#pc-jeb").textContent = c.제안접수;
       document.querySelectorAll("#pboard .p-tab[data-s]").forEach(t => { const b = t.querySelector(".tab-new"); if (b) b.classList.toggle("show", !!nwt[t.dataset.s]); });
       pRender();
     });
@@ -203,7 +205,7 @@
               <label>완료<select data-f="done">${optHtml(OPT_DONE, s.done)}</select></label>
             </div>
             <label>조치현황 (Follow-up)</label>
-            <div class="fu-list">${(s.followup || "").split("\n").filter(x => x.trim()).map(ln => `<div class="fu-item"><span>${pEsc(ln)}</span></div>`).join("") || '<div class="fu-empty">아직 조치 이력이 없습니다.</div>'}</div>
+            <div class="fu-list">${(s.followup || "").split("\n").filter(x => x.trim()).map((ln, i) => `<div class="fu-item"><span>${pEsc(ln)}</span><button class="fu-del" data-i="${i}" title="이 줄 삭제">×</button></div>`).join("") || '<div class="fu-empty">아직 조치 이력이 없습니다.</div>'}</div>
             <div class="fu-add"><input class="fu-date" placeholder="8/3"><input class="fu-text" placeholder="내용 (예: 8월 시행 / 4분기 진행)"><button class="fu-btn">＋줄 추가</button></div>
             ${photoGroups(s)}<div class="ef-note">📷 사진 추가·삭제는 제안설정에서 · 바꾸면 자동 저장됩니다</div>
           </div>` : `<div class="p-meta"><span class="p-chip">심사결과 <b>${pEsc(s.review || "—")}</b></span><span class="p-chip">시행 <b>${pEsc(s.action || "—")}</b></span><span class="p-chip">완료 <b>${pEsc(s.done || "—")}</b></span>${dd && dd.kind === "date" ? `<span class="p-chip">목표 <b>${pEsc(dd.target)}</b></span>` : ""}</div>
